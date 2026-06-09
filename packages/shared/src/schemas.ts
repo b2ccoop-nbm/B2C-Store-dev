@@ -22,14 +22,18 @@ export const catalogItemPublicSchema = z.object({
 
 export type CatalogItemPublic = z.infer<typeof catalogItemPublicSchema>;
 
-/** Order lifecycle — pay on pickup first, then PayMongo in Phase 2. */
+/** Order lifecycle — pay on pickup (MVP) or PayMongo online (Phase 2). */
 export const orderStatusSchema = z.enum([
   "PENDING_PICKUP",
+  "PENDING_PAYMENT",
   "PAID",
   "POSTED_TO_LEDGER",
   "FAILED",
   "CANCELLED",
 ]);
+
+export const paymentMethodSchema = z.enum(["pickup", "online"]);
+export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
@@ -48,6 +52,12 @@ export const checkoutRequestSchema = z.object({
   email: z.string().email().max(255),
   displayName: z.string().min(1).max(255).optional(),
   items: z.array(checkoutItemSchema).min(1).max(50),
+  /** Defaults to pay-on-pickup. `online` requires PayMongo keys on the API. */
+  paymentMethod: paymentMethodSchema.default("pickup"),
+  /** Cloudflare Turnstile — required when TURNSTILE_SECRET_KEY is set on the API. */
+  turnstileToken: z.string().min(1).max(2048).optional(),
+  /** Firebase ID token — optional member sign-in; email must match token. */
+  firebaseIdToken: z.string().min(1).max(8192).optional(),
 });
 
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
@@ -59,7 +69,9 @@ export const checkoutResponseSchema = z.object({
   grossAmount: z.string(),
   patronageAmount: z.string(),
   currency: z.string(),
-  pickupNote: z.string(),
+  pickupNote: z.string().optional(),
+  /** Present when paymentMethod is `online` and PayMongo session was created. */
+  checkoutUrl: z.string().url().optional(),
 });
 
 export type CheckoutResponse = z.infer<typeof checkoutResponseSchema>;
@@ -75,6 +87,7 @@ export const orderDetailSchema = z.object({
   patronageAmount: z.string(),
   currency: z.string(),
   memo: z.string().nullable(),
+  accountingError: z.string().optional(),
   createdAt: z.string(),
   lines: z.array(
     z.object({

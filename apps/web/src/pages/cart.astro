@@ -2,12 +2,22 @@
 import Layout from "../layouts/Layout.astro";
 
 const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const firebaseConfigured = Boolean(
+  import.meta.env.PUBLIC_FIREBASE_API_KEY?.trim() &&
+    import.meta.env.PUBLIC_FIREBASE_PROJECT_ID?.trim(),
+);
+const firebaseConfig = {
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY ?? "",
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID ?? "",
+};
 ---
 
 <Layout title="Cart — B2CCoop Store">
   <section class="hero">
     <h1>Your cart</h1>
-    <p class="lead">Pay on pickup at the coop counter (Phase 1 MVP).</p>
+    <p class="lead">Pay on pickup or online (PayMongo when configured).</p>
   </section>
 
   <div id="cart-root">
@@ -16,20 +26,47 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
 
   <section id="checkout-panel" class="checkout hidden">
     <h2>Checkout</h2>
-    <p class="hint">Use a dev test email or any email you can access.</p>
+    {firebaseConfigured && (
+      <section class="member-panel">
+        <p class="hint">Members: sign in to link patronage to your account.</p>
+        <button type="button" id="member-signin" class="secondary">Sign in with email</button>
+        <button type="button" id="member-signout" class="secondary hidden">Sign out</button>
+        <p id="member-status" class="hint hidden"></p>
+      </section>
+    )}
     <form id="checkout-form">
       <label>
         Email
-        <input type="email" name="email" required placeholder="guest.shopper@b2ccoop.test" />
+        <input type="email" name="email" id="checkout-email" required placeholder="guest.shopper@b2ccoop.test" />
       </label>
       <label>
         Name (optional)
         <input type="text" name="displayName" placeholder="Your name" />
       </label>
-      <button type="submit" class="primary">Place order — pay on pickup</button>
+      <fieldset class="payment-methods">
+        <legend>Payment</legend>
+        <label class="inline">
+          <input type="radio" name="paymentMethod" value="pickup" checked />
+          Pay on pickup
+        </label>
+        <label class="inline">
+          <input type="radio" name="paymentMethod" value="online" />
+          Pay online (PayMongo)
+        </label>
+      </fieldset>
+      {turnstileSiteKey && (
+        <div class="turnstile-wrap">
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} id="turnstile-widget"></div>
+        </div>
+      )}
+      <button type="submit" class="primary" id="checkout-submit">Place order</button>
     </form>
     <p id="checkout-error" class="error hidden"></p>
   </section>
+
+  {turnstileSiteKey && (
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  )}
 </Layout>
 
 <style>
@@ -81,6 +118,41 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
   }
   .error { color: #b91c1c; margin-top: 0.75rem; }
   .hint { font-size: 0.85rem; color: #64748b; }
+  .member-panel {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f0fdfa;
+    border-radius: 0.5rem;
+    border: 1px solid #99f6e4;
+  }
+  .secondary {
+    background: #fff;
+    border: 1px solid #0e7490;
+    color: #0e7490;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 0.5rem;
+  }
+  .payment-methods {
+    border: none;
+    margin: 0 0 1rem;
+    padding: 0;
+  }
+  .payment-methods legend {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 0.35rem;
+  }
+  .turnstile-wrap { margin-bottom: 1rem; }
   .empty { color: #64748b; }
   .qty-btn {
     width: 2rem;
@@ -92,7 +164,7 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
   }
 </style>
 
-<script define:vars={{ apiBase }}>
+<script is:inline define:vars={{ apiBase, turnstileSiteKey, firebaseConfigured, firebaseConfig }}>
   import {
     readCart,
     updateQty,
@@ -105,6 +177,55 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
   const checkoutPanel = document.getElementById("checkout-panel");
   const checkoutForm = document.getElementById("checkout-form");
   const checkoutError = document.getElementById("checkout-error");
+  const checkoutSubmit = document.getElementById("checkout-submit");
+  const emailInput = document.getElementById("checkout-email");
+  let firebaseIdToken = null;
+
+  async function initFirebaseAuth() {
+    if (!firebaseConfigured) return;
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js");
+    const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
+      await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const signInBtn = document.getElementById("member-signin");
+    const signOutBtn = document.getElementById("member-signout");
+    const memberStatus = document.getElementById("member-status");
+
+    signInBtn?.addEventListener("click", async () => {
+      const email = prompt("Member email", emailInput?.value ?? "");
+      const password = prompt("Password");
+      if (!email || !password) return;
+      try {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Sign-in failed");
+      }
+    });
+
+    signOutBtn?.addEventListener("click", async () => {
+      await signOut(auth);
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user?.email) {
+        firebaseIdToken = await user.getIdToken();
+        if (emailInput) emailInput.value = user.email;
+        memberStatus.textContent = `Signed in as ${user.email}`;
+        memberStatus.classList.remove("hidden");
+        signInBtn?.classList.add("hidden");
+        signOutBtn?.classList.remove("hidden");
+      } else {
+        firebaseIdToken = null;
+        memberStatus.classList.add("hidden");
+        signInBtn?.classList.remove("hidden");
+        signOutBtn?.classList.add("hidden");
+      }
+    });
+  }
+
+  initFirebaseAuth();
 
   function render() {
     const cart = readCart();
@@ -166,12 +287,21 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
     checkoutError.classList.add("hidden");
     const fd = new FormData(checkoutForm);
     const cart = readCart();
+    const paymentMethod = String(fd.get("paymentMethod") ?? "pickup");
+    const turnstileToken = turnstileSiteKey
+      ? document.querySelector("[name=cf-turnstile-response]")?.value
+      : undefined;
+
     const body = {
       email: String(fd.get("email") ?? ""),
       displayName: String(fd.get("displayName") ?? "") || undefined,
+      paymentMethod,
       items: cart.map((l) => ({ sku: l.sku, quantity: l.quantity })),
+      ...(turnstileToken ? { turnstileToken } : {}),
+      ...(firebaseIdToken ? { firebaseIdToken } : {}),
     };
 
+    if (checkoutSubmit) checkoutSubmit.disabled = true;
     try {
       const res = await fetch(`${apiBase}/checkout`, {
         method: "POST",
@@ -181,10 +311,15 @@ const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");
       clearCart();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
       window.location.href = `/order/${data.orderId}`;
     } catch (err) {
       checkoutError.textContent = err instanceof Error ? err.message : "Checkout failed";
       checkoutError.classList.remove("hidden");
+      if (checkoutSubmit) checkoutSubmit.disabled = false;
     }
   });
 

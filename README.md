@@ -100,4 +100,5 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 
 - **Phase 0** ✓ scaffold, schema, health, seed catalog
 - **Phase 1** ✓ catalog, guest checkout, pay-on-pickup, staff confirm → Accounting
-- **Phase 2** PayMongo, Turnstile, Firebase member link, deploy `store.b2ccoop.com`
+- **Phase 2** (in progress) PayMongo checkout + webhook, Turnstile, Firebase member sign-in, WebApp member resolve
+- **Phase 2b** Deploy `store.b2ccoop.com`, WebApp `VITE_COOP_STORE_URL`

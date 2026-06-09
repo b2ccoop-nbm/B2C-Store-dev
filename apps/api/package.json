@@ -17,6 +17,7 @@
     "@b2ccoop/store-shared": "*",
     "drizzle-orm": "^0.40.0",
     "hono": "^4.7.4",
+    "jose": "^6.0.11",
     "postgres": "^3.4.5",
     "zod": "^3.24.2"
   },

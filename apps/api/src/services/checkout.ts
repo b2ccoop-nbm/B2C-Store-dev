@@ -3,6 +3,7 @@ import type { CheckoutRequest } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { orderLines, orders, patronageAccruals, products, vendors } from "../db/schema";
 import { normalizeEmail, resolveMemberByEmail } from "../lib/member-resolve";
+import { createPaymongoCheckoutSession, paymongoConfigured } from "../integrations/paymongo-client";
 import type { WorkerEnv } from "../env";
 
 type ResolvedLine = {
@@ -20,7 +21,7 @@ type ResolvedLine = {
 export class CheckoutError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 404 | 409 = 400,
+    readonly status: 400 | 404 | 409 | 502 | 503 = 400,
   ) {
     super(message);
     this.name = "CheckoutError";
@@ -125,9 +126,15 @@ export async function createCheckoutOrder(
   const email = normalizeEmail(dto.email);
   const member = await resolveMemberByEmail(email, env);
   const resolved = await resolveCatalogLines(db, dto.items);
+  const paymentMethod = dto.paymentMethod ?? "pickup";
+
+  if (paymentMethod === "online" && !paymongoConfigured(env)) {
+    throw new CheckoutError("Online payment is not configured (PAYMONGO_SECRET_KEY)", 503);
+  }
 
   const orderId = crypto.randomUUID();
   const externalId = `order:${orderId}`;
+  const initialStatus = paymentMethod === "online" ? "PENDING_PAYMENT" : "PENDING_PICKUP";
 
   const [order] = await db
     .insert(orders)
@@ -137,7 +144,7 @@ export async function createCheckoutOrder(
       guestEmail: email,
       participantId: member.participantId,
       vendorCode: resolved.vendorCode,
-      status: "PENDING_PICKUP",
+      status: initialStatus,
       grossAmount: resolved.grossAmount,
       salesAmount: resolved.salesAmount,
       vendorPayableAmount: resolved.vendorPayableAmount,
@@ -146,6 +153,7 @@ export async function createCheckoutOrder(
       memo: resolved.memo,
       metadata: {
         channel: "store_checkout",
+        paymentMethod,
         displayName: dto.displayName ?? member.displayName,
         memberIdNo: member.memberIdNo,
       },
@@ -173,6 +181,56 @@ export async function createCheckoutOrder(
       status: member.participantId ? "MERGED" : "ACCRUED",
       linkedAt: member.participantId ? new Date() : null,
     });
+  }
+
+  if (paymentMethod === "online") {
+    const storeBase = (env.PUBLIC_STORE_URL ?? "http://localhost:5175").replace(/\/$/, "");
+    const grossCentavos = Math.round(Number(resolved.grossAmount) * 100);
+    const paymongo = await createPaymongoCheckoutSession(env, {
+      referenceNumber: externalId,
+      description: resolved.memo,
+      successUrl: `${storeBase}/order/${orderId}?paid=1`,
+      cancelUrl: `${storeBase}/cart`,
+      lineItems: [
+        {
+          name: resolved.memo.slice(0, 120),
+          amountCentavos: grossCentavos,
+          quantity: 1,
+        },
+      ],
+    });
+
+    if (!paymongo.ok) {
+      await db
+        .update(orders)
+        .set({ status: "CANCELLED", updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
+      throw new CheckoutError(paymongo.error, 502);
+    }
+
+    await db
+      .update(orders)
+      .set({
+        metadata: {
+          channel: "store_checkout",
+          paymentMethod,
+          displayName: dto.displayName ?? member.displayName,
+          memberIdNo: member.memberIdNo,
+          paymongoSessionId: paymongo.sessionId,
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId));
+
+    return {
+      orderId: order.id,
+      externalId: order.externalId,
+      status: order.status,
+      grossAmount: order.grossAmount,
+      patronageAmount: order.patronageAmount,
+      currency: order.currency,
+      checkoutUrl: paymongo.checkoutUrl,
+    };
   }
 
   return {

@@ -38,7 +38,11 @@ const lines = (order?.lines as Array<Record<string, unknown>>) ?? [];
         <p class="eyebrow">Order receipt</p>
         <h1>{formatPhp(String(order.grossAmount))}</h1>
         <p class="status" data-status={order.status}>{order.status}</p>
-        <p class="hint">{order.pickupNote ?? "Pay at pickup counter when you collect your order."}</p>
+        <p class="hint">
+          {order.status === "PENDING_PAYMENT"
+            ? "Complete payment on PayMongo — ledger posts after webhook confirmation."
+            : (order.pickupNote ?? "Pay at pickup counter when you collect your order.")}
+        </p>
       </section>
 
       <dl class="meta-grid">
@@ -61,15 +65,27 @@ const lines = (order?.lines as Array<Record<string, unknown>>) ?? [];
         ))}
       </ul>
 
-      {order.status === "PENDING_PICKUP" && (
-        <section class="staff panel">
-          <h2>Staff — confirm pickup payment</h2>
-          <p class="hint">Posts to Accounting when configured. Dev secret from <code>apps/api/.dev.vars</code>.</p>
+      {(order.status === "PENDING_PICKUP" || order.status === "FAILED") && (
+        <section class:list={["staff", "panel", order.status === "FAILED" && "panel-failed"]}>
+          <h2>
+            {order.status === "FAILED"
+              ? "Staff — retry ledger post"
+              : "Staff — confirm pickup payment"}
+          </h2>
+          {order.status === "FAILED" && order.accountingError && (
+            <p class="error-block">Last error: {order.accountingError}</p>
+          )}
+          <p class="hint">
+            Posts to Accounting when configured. Start Accounting on <code>localhost:3010</code> in dev.
+            Secret from <code>apps/api/.dev.vars</code>.
+          </p>
           <label>
             DEV_ADMIN_SECRET
             <input type="password" id="admin-secret" placeholder="Bearer token" />
           </label>
-          <button type="button" id="confirm-pickup" class="primary">Mark paid & post ledger</button>
+          <button type="button" id="confirm-pickup" class="primary">
+            {order.status === "FAILED" ? "Retry post to ledger" : "Mark paid & post ledger"}
+          </button>
           <p id="admin-msg" class="hidden"></p>
         </section>
       )}
@@ -105,6 +121,15 @@ const lines = (order?.lines as Array<Record<string, unknown>>) ?? [];
     border: 1px solid #fde68a;
     border-radius: 0.75rem;
     padding: 1rem 1.25rem;
+  }
+  .panel-failed {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .error-block {
+    color: #b91c1c;
+    font-size: 0.875rem;
+    margin: 0 0 0.75rem;
   }
   .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; }
   label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; }

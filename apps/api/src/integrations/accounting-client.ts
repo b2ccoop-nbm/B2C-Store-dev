@@ -72,6 +72,10 @@ export async function postMarketplaceSale(
     return { ok: true, created: res.status === 201, body };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, created: false, error: msg };
+    const hint =
+      /fetch failed|network|connection|ECONNREFUSED/i.test(msg)
+        ? ` — is Accounting running at ${base}?`
+        : "";
+    return { ok: false, created: false, error: `${msg}${hint}` };
   }
 }

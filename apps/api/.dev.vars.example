@@ -3,4 +3,15 @@
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/b2ccoop_store
 
 # Local staff API (Phase 1c — confirm pickup). Never use in production as-is.
-DEV_ADMIN_SECRET=b2ccoop-store-dev-admin-change-me
+DEV_ADMIN_SECRET=password01
+ACCOUNTING_API_URL=http://localhost:3010
+ACCOUNTING_INTEGRATION_SECRET=b2ccoop-accounting-integration-secret-2026-muex
+
+# Phase 2 — member resolve (WebApp must have matching STORE_INTEGRATION_SECRET)
+# WEBAPP_API_URL=http://localhost:3000
+# WEBAPP_INTEGRATION_SECRET=b2ccoop-store-webapp-integration-secret-2026
+# FIREBASE_PROJECT_ID=b2ccoop-87114
+# TURNSTILE_SECRET_KEY=
+# PAYMONGO_SECRET_KEY=sk_test_...
+# PAYMONGO_WEBHOOK_SECRET=whsk_...
+# PUBLIC_STORE_URL=http://localhost:5175

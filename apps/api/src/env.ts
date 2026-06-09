@@ -9,6 +9,11 @@ export type WorkerEnv = {
   ACCOUNTING_API_URL?: string;
   ACCOUNTING_INTEGRATION_SECRET?: string;
   TURNSTILE_SECRET_KEY?: string;
+  /** PayMongo secret API key (sk_test_* / sk_live_*) */
+  PAYMONGO_SECRET_KEY?: string;
+  /** PayMongo webhook signing secret (whsk_*) */
+  PAYMONGO_WEBHOOK_SECRET?: string;
+  PUBLIC_STORE_URL?: string;
   /** Local dev staff API (Phase 1c) — Bearer token for admin routes */
   DEV_ADMIN_SECRET?: string;
 };

@@ -32,6 +32,18 @@ Skip dev orders only: `SEED_DEV_FIXTURES=0 npm run db:seed`
 | http://localhost:5175/admin | Staff pending queue |
 | http://localhost:5175/order/:id | Receipt + confirm pickup |
 
+## Phase 2 (optional)
+
+| Feature | Dev setup |
+|---------|-----------|
+| Member resolve | WebApp `STORE_INTEGRATION_SECRET` + Store `WEBAPP_INTEGRATION_SECRET` (same value) |
+| Firebase sign-in | `PUBLIC_FIREBASE_*` in `apps/web/.env`, `FIREBASE_PROJECT_ID` in `apps/api/.dev.vars` |
+| Turnstile | `PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` (skipped when unset) |
+| PayMongo | `PAYMONGO_SECRET_KEY` + webhook to `POST /webhooks/paymongo` |
+| Failed ledger retry | Order receipt shows **Retry post to ledger** when status is `FAILED` |
+
+Run migration after pull: `cd apps/api && npm run db:migrate`
+
 ## Phase 1 test flow
 
 1. Open **Catalog** → add rice + oil → **Cart**
@@ -63,7 +75,7 @@ Local staff API (coming in Phase 1c) will use:
 
 ```bash
 # apps/api/.dev.vars
-DEV_ADMIN_SECRET=b2ccoop-store-dev-admin-change-me
+DEV_ADMIN_SECRET=password01
 ```
 
 Send header: `Authorization: Bearer <DEV_ADMIN_SECRET>`

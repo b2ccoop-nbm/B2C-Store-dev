@@ -14,6 +14,7 @@ import {
 
 export const orderStatusEnum = pgEnum("order_status", [
   "PENDING_PICKUP",
+  "PENDING_PAYMENT",
   "PAID",
   "POSTED_TO_LEDGER",
   "FAILED",

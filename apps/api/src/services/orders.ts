@@ -4,6 +4,8 @@ import { orderLines, orders } from "../db/schema";
 import { postMarketplaceSale } from "../integrations/accounting-client";
 import type { WorkerEnv } from "../env";
 
+type OrderRow = typeof orders.$inferSelect;
+
 export class OrderError extends Error {
   constructor(
     message: string,
@@ -23,6 +25,13 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
 
   const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, orderId));
 
+  const metadata =
+    typeof order.metadata === "object" && order.metadata ? order.metadata : {};
+  const accountingError =
+    order.status === "FAILED" && "accountingError" in metadata
+      ? String(metadata.accountingError)
+      : undefined;
+
   return {
     orderId: order.id,
     externalId: order.externalId,
@@ -37,6 +46,7 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
     patronageAmount: order.patronageAmount,
     currency: order.currency,
     memo: order.memo,
+    accountingError,
     createdAt: order.createdAt.toISOString(),
     lines: lines.map((line) => ({
       sku: line.sku,
@@ -46,6 +56,84 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
       lineGross: line.lineGross,
       linePatronage: line.linePatronage,
     })),
+  };
+}
+
+async function postOrderToAccounting(
+  db: StoreDatabase,
+  env: WorkerEnv,
+  order: OrderRow,
+  channel: string,
+) {
+  const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, order.id));
+
+  return postMarketplaceSale(env, {
+    externalId: order.externalId,
+    occurredAt: new Date().toISOString(),
+    currency: order.currency,
+    grossAmount: Number(order.grossAmount),
+    salesAmount: Number(order.salesAmount),
+    vendorPayableAmount: Number(order.vendorPayableAmount),
+    cogsAmount: Number(order.cogsAmount),
+    patronageAmount: Number(order.patronageAmount),
+    vendorCode: order.vendorCode,
+    buyerParticipantId: order.participantId ?? undefined,
+    memo: order.memo ?? undefined,
+    metadata: {
+      orderId: order.id,
+      guestEmail: order.guestEmail ?? undefined,
+      lineItems: lines,
+      channel,
+    },
+  });
+}
+
+async function finalizePaidOrder(
+  db: StoreDatabase,
+  env: WorkerEnv,
+  order: OrderRow,
+  channel: string,
+) {
+  if (order.status === "POSTED_TO_LEDGER") {
+    return {
+      orderId: order.id,
+      externalId: order.externalId,
+      status: order.status,
+      accounting: { status: "already_posted" as const },
+    };
+  }
+
+  const accountingResult = await postOrderToAccounting(db, env, order, channel);
+  const finalStatus = accountingResult.ok ? "POSTED_TO_LEDGER" : "FAILED";
+
+  await db
+    .update(orders)
+    .set({
+      status: finalStatus,
+      updatedAt: new Date(),
+      metadata: {
+        ...(typeof order.metadata === "object" && order.metadata ? order.metadata : {}),
+        accountingError: accountingResult.error,
+        accountingPostedAt: accountingResult.ok ? new Date().toISOString() : undefined,
+      },
+    })
+    .where(eq(orders.id, order.id));
+
+  if (!accountingResult.ok) {
+    throw new OrderError(
+      accountingResult.error ?? "Accounting post failed — order marked FAILED for retry",
+      400,
+    );
+  }
+
+  return {
+    orderId: order.id,
+    externalId: order.externalId,
+    status: finalStatus,
+    accounting: {
+      status: accountingResult.created ? "created" : "already_posted",
+      body: accountingResult.body,
+    },
   };
 }
 
@@ -82,58 +170,47 @@ export async function confirmPickupAndPostLedger(
     .set({ status: "PAID", updatedAt: new Date() })
     .where(eq(orders.id, orderId));
 
-  const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, orderId));
+  const paid = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  return finalizePaidOrder(db, env, paid[0]!, "store_pickup_confirm");
+}
 
-  const accountingResult = await postMarketplaceSale(env, {
-    externalId: order.externalId,
-    occurredAt: new Date().toISOString(),
-    currency: order.currency,
-    grossAmount: Number(order.grossAmount),
-    salesAmount: Number(order.salesAmount),
-    vendorPayableAmount: Number(order.vendorPayableAmount),
-    cogsAmount: Number(order.cogsAmount),
-    patronageAmount: Number(order.patronageAmount),
-    vendorCode: order.vendorCode,
-    buyerParticipantId: order.participantId ?? undefined,
-    memo: order.memo ?? undefined,
-    metadata: {
-      orderId: order.id,
-      guestEmail: order.guestEmail ?? undefined,
-      lineItems: lines,
-      channel: "store_pickup_confirm",
-    },
-  });
+/** PayMongo webhook — idempotent by externalId / order status. */
+export async function fulfillOnlinePayment(
+  db: StoreDatabase,
+  env: WorkerEnv,
+  externalId: string,
+  paymongoEventId?: string,
+) {
+  const rows = await db.select().from(orders).where(eq(orders.externalId, externalId)).limit(1);
+  const order = rows[0];
+  if (!order) {
+    throw new OrderError(`Order not found for reference ${externalId}`, 404);
+  }
 
-  const finalStatus = accountingResult.ok ? "POSTED_TO_LEDGER" : "FAILED";
+  if (order.status === "POSTED_TO_LEDGER") {
+    return { orderId: order.id, status: order.status, skipped: true as const };
+  }
+
+  if (order.status !== "PENDING_PAYMENT" && order.status !== "FAILED") {
+    throw new OrderError(`Cannot fulfill online payment for status ${order.status}`, 409);
+  }
+
   await db
     .update(orders)
     .set({
-      status: finalStatus,
+      status: "PAID",
       updatedAt: new Date(),
       metadata: {
         ...(typeof order.metadata === "object" && order.metadata ? order.metadata : {}),
-        accountingError: accountingResult.error,
-        accountingPostedAt: accountingResult.ok ? new Date().toISOString() : undefined,
+        paymongoEventId,
+        paidAt: new Date().toISOString(),
       },
     })
-    .where(eq(orders.id, orderId));
+    .where(eq(orders.id, order.id));
 
-  if (!accountingResult.ok) {
-    throw new OrderError(
-      accountingResult.error ?? "Accounting post failed — order marked FAILED for retry",
-      400,
-    );
-  }
-
-  return {
-    orderId: order.id,
-    externalId: order.externalId,
-    status: finalStatus,
-    accounting: {
-      status: accountingResult.created ? "created" : "already_posted",
-      body: accountingResult.body,
-    },
-  };
+  const paid = await db.select().from(orders).where(eq(orders.id, order.id)).limit(1);
+  const result = await finalizePaidOrder(db, env, paid[0]!, "store_paymongo_webhook");
+  return { ...result, skipped: false as const };
 }
 
 export async function listPendingPickupOrders(db: StoreDatabase) {

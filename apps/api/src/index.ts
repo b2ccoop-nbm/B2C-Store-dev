@@ -11,6 +11,7 @@ import { getCatalog } from "./routes/catalog";
 import { postCheckout } from "./routes/checkout";
 import { getDevFixtures } from "./routes/dev-fixtures";
 import { getOrder } from "./routes/orders";
+import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
@@ -32,8 +33,9 @@ app.get("/", (c) =>
       "GET /admin/orders/pending",
       "PATCH /admin/orders/:id/confirm-pickup",
       "GET /dev/fixtures",
+      "POST /webhooks/paymongo",
     ],
-    phase: "1-mvp",
+    phase: "2",
   }),
 );
 
@@ -69,5 +71,6 @@ admin.patch("/orders/:id/confirm-pickup", (c) => patchConfirmPickup(c));
 app.route("/admin", admin);
 
 app.get("/dev/fixtures", (c) => getDevFixtures(c));
+app.post("/webhooks/paymongo", (c) => postPaymongoWebhook(c));
 
 export default app;
