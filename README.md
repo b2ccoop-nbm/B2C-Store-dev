@@ -94,6 +94,7 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 | [docs/PLATFORM-EVALUATION.md](./docs/PLATFORM-EVALUATION.md) | Custom vs Shopify/Medusa |
 | [docs/FIREBASE-SUPABASE-DATABASE.md](./docs/FIREBASE-SUPABASE-DATABASE.md) | Auth & Postgres strategy |
 | [docs/INTEGRATION.md](./docs/INTEGRATION.md) | WebApp & Accounting contracts |
+| [docs/DEV-TESTING.md](./docs/DEV-TESTING.md) | Mock products & dev test accounts |
 
 ## Phase roadmap
 

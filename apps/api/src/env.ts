@@ -9,6 +9,8 @@ export type WorkerEnv = {
   ACCOUNTING_API_URL?: string;
   ACCOUNTING_INTEGRATION_SECRET?: string;
   TURNSTILE_SECRET_KEY?: string;
+  /** Local dev staff API (Phase 1c) — Bearer token for admin routes */
+  DEV_ADMIN_SECRET?: string;
 };
 
 export function resolveDatabaseUrl(env: WorkerEnv): string | null {

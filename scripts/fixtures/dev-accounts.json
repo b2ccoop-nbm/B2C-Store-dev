@@ -1,0 +1,53 @@
+{
+  "shoppers": [
+    {
+      "email": "guest.shopper@b2ccoop.test",
+      "displayName": "Ana Guest Shopper",
+      "useCase": "Guest checkout — no Firebase required"
+    },
+    {
+      "email": "member.demo@b2ccoop.test",
+      "displayName": "Ben Demo Member",
+      "participantId": "a1111111-1111-4111-8111-111111111111",
+      "memberIdNo": "B2C-DEV-001",
+      "useCase": "Member checkout + patronage linked to Participant.id"
+    },
+    {
+      "email": "member.patron@b2ccoop.test",
+      "displayName": "Carla Patron Member",
+      "participantId": "a2222222-2222-4222-8222-222222222222",
+      "memberIdNo": "B2C-DEV-002",
+      "useCase": "Second member for patronage merge tests"
+    }
+  ],
+  "staff": [
+    {
+      "email": "store.admin@b2ccoop.test",
+      "displayName": "Dev Store Admin",
+      "role": "store_admin"
+    },
+    {
+      "email": "pickup.clerk@b2ccoop.test",
+      "displayName": "Dev Pickup Clerk",
+      "role": "pickup_clerk"
+    }
+  ],
+  "demoCart": [
+    { "sku": "RICE-5KG", "quantity": 1 },
+    { "sku": "OIL-1L", "quantity": 1 }
+  ],
+  "sampleOrders": [
+    {
+      "externalId": "order:dev-guest-pending-001",
+      "guestEmail": "guest.shopper@b2ccoop.test",
+      "status": "PENDING_PICKUP",
+      "grossAmount": "470.00"
+    },
+    {
+      "externalId": "order:dev-member-paid-001",
+      "guestEmail": "member.demo@b2ccoop.test",
+      "status": "PAID",
+      "grossAmount": "85.00"
+    }
+  ]
+}

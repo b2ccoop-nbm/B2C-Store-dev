@@ -3,6 +3,8 @@ import { STORE_SERVICE_NAME } from "@b2ccoop/store-shared";
 import { pingDatabase } from "./db/client";
 import { corsOrigins, resolveDatabaseUrl, type WorkerEnv } from "./env";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
+import { getCatalog } from "./routes/catalog";
+import { getDevFixtures } from "./routes/dev-fixtures";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
 
@@ -15,8 +17,8 @@ app.use("*", async (c, next) => {
 app.get("/", (c) =>
   c.json({
     service: STORE_SERVICE_NAME,
-    docs: "GET /health",
-    phase: "0",
+    routes: ["GET /health", "GET /catalog", "GET /dev/fixtures"],
+    phase: "0-dev-fixtures",
   }),
 );
 
@@ -40,5 +42,8 @@ app.get("/health", async (c) => {
 
   return c.json(body, ok ? 200 : 503);
 });
+
+app.get("/catalog", (c) => getCatalog(c));
+app.get("/dev/fixtures", (c) => getDevFixtures(c));
 
 export default app;
