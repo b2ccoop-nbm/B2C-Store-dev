@@ -1,0 +1,23 @@
+# Local Postgres for B2C-Store only — separate from WebApp (:5432) and Accounting (:5433).
+# From repo root:  npm run db:up && npm run db:migrate
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: b2ccoop-store-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: b2ccoop_store
+    ports:
+      - "5434:5432"
+    volumes:
+      - b2ccoop_store_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d b2ccoop_store"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  b2ccoop_store_pgdata:

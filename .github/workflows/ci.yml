@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: b2ccoop_store
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d b2ccoop_store"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5434/b2ccoop_store
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Migrate
+        run: npm run db:migrate --workspace @b2ccoop/store-api
+
+      - name: Seed
+        run: npm run db:seed --workspace @b2ccoop/store-api
+
+      - name: Build web
+        run: npm run build --workspace @b2ccoop/store-web
+
+      - name: Audit
+        run: npm audit --audit-level=high
+        continue-on-error: true

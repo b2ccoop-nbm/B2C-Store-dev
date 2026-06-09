@@ -1,0 +1,107 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
+let health: Record<string, unknown> | null = null;
+let healthError = "";
+
+try {
+  const res = await fetch(`${apiBase}/health`);
+  health = (await res.json()) as Record<string, unknown>;
+} catch {
+  healthError = `Could not reach API at ${apiBase}`;
+}
+---
+
+<Layout title="B2CCoop Store">
+  <section class="hero">
+    <p class="eyebrow">Phase 0</p>
+    <h1>B2CCoop Store</h1>
+    <p class="lead">
+      Cooperative marketplace for B2C Consumers Cooperative — browse as a guest, pay on pickup at MVP,
+      earn patronage when you link your member account.
+    </p>
+    <p class="meta">Target domain: <strong>store.b2ccoop.com</strong></p>
+  </section>
+
+  <section class="panel">
+    <h2>API health</h2>
+    {healthError ? (
+      <p class="error">{healthError}</p>
+    ) : health ? (
+      <dl>
+        <dt>Status</dt>
+        <dd class={health.ok ? "ok" : "bad"}>{health.ok ? "OK" : "Degraded"}</dd>
+        <dt>Service</dt>
+        <dd>{health.service as string}</dd>
+        <dt>Database</dt>
+        <dd>{health.database as string}</dd>
+        <dt>Environment</dt>
+        <dd>{health.environment as string}</dd>
+      </dl>
+    ) : (
+      <p>Loading…</p>
+    )}
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0 0 0.5rem;
+  }
+  h1 {
+    font-size: 2rem;
+    margin: 0 0 0.75rem;
+    color: #0f172a;
+  }
+  .lead {
+    max-width: 42rem;
+    line-height: 1.6;
+    color: #334155;
+  }
+  .meta {
+    margin-top: 1rem;
+    color: #475569;
+  }
+  .panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.5rem;
+  }
+  .panel h2 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+  }
+  dl {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    gap: 0.5rem 1rem;
+    margin: 0;
+  }
+  dt {
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+  dd {
+    margin: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.875rem;
+  }
+  .ok {
+    color: #15803d;
+  }
+  .bad {
+    color: #b91c1c;
+  }
+  .error {
+    color: #b91c1c;
+  }
+</style>

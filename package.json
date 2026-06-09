@@ -1,0 +1,25 @@
+{
+  "name": "b2ccoop-store",
+  "private": true,
+  "description": "B2CCoop cooperative e-commerce — Astro storefront + Hono Worker API",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @b2ccoop/store-web",
+    "dev:api": "npm run dev --workspace @b2ccoop/store-api",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate --workspace @b2ccoop/store-api",
+    "db:generate": "npm run db:generate --workspace @b2ccoop/store-api",
+    "db:seed": "npm run db:seed --workspace @b2ccoop/store-api",
+    "setup": "bash scripts/setup-local.sh",
+    "check": "bash scripts/check-dev.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

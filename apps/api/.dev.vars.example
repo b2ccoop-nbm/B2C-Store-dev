@@ -1,0 +1,3 @@
+# Copy to .dev.vars (gitignored). See repo root .env.example
+
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/b2ccoop_store

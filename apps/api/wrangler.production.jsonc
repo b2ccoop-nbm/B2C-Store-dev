@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "b2ccoop-store-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

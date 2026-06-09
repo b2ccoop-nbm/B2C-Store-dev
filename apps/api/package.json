@@ -1,0 +1,31 @@
+{
+  "name": "@b2ccoop/store-api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@b2ccoop/store-shared": "*",
+    "@hono/zod-validator": "^0.4.3",
+    "drizzle-orm": "^0.40.0",
+    "hono": "^4.7.4",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250320.0",
+    "drizzle-kit": "^0.30.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "wrangler": "^4.0.0"
+  }
+}
