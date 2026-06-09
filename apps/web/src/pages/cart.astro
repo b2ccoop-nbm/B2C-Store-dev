@@ -1,0 +1,192 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
+---
+
+<Layout title="Cart — B2CCoop Store">
+  <section class="hero">
+    <h1>Your cart</h1>
+    <p class="lead">Pay on pickup at the coop counter (Phase 1 MVP).</p>
+  </section>
+
+  <div id="cart-root">
+    <p>Loading cart…</p>
+  </div>
+
+  <section id="checkout-panel" class="checkout hidden">
+    <h2>Checkout</h2>
+    <p class="hint">Use a dev test email or any email you can access.</p>
+    <form id="checkout-form">
+      <label>
+        Email
+        <input type="email" name="email" required placeholder="guest.shopper@b2ccoop.test" />
+      </label>
+      <label>
+        Name (optional)
+        <input type="text" name="displayName" placeholder="Your name" />
+      </label>
+      <button type="submit" class="primary">Place order — pay on pickup</button>
+    </form>
+    <p id="checkout-error" class="error hidden"></p>
+  </section>
+</Layout>
+
+<style>
+  .hero { margin-bottom: 1.5rem; }
+  h1 { margin: 0 0 0.25rem; }
+  .lead { color: #64748b; margin: 0; }
+  .hidden { display: none; }
+  .line {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .totals {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 0.75rem;
+  }
+  .checkout {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  form label {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  input {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+  .primary {
+    background: #0e7490;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .error { color: #b91c1c; margin-top: 0.75rem; }
+  .hint { font-size: 0.85rem; color: #64748b; }
+  .empty { color: #64748b; }
+  .qty-btn {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 0.35rem;
+    cursor: pointer;
+  }
+</style>
+
+<script define:vars={{ apiBase }}>
+  import {
+    readCart,
+    updateQty,
+    clearCart,
+    cartTotals,
+    formatPhp,
+  } from "/scripts/cart.js";
+
+  const root = document.getElementById("cart-root");
+  const checkoutPanel = document.getElementById("checkout-panel");
+  const checkoutForm = document.getElementById("checkout-form");
+  const checkoutError = document.getElementById("checkout-error");
+
+  function render() {
+    const cart = readCart();
+    if (!cart.length) {
+      root.innerHTML = '<p class="empty">Cart is empty. <a href="/catalog">Browse catalog</a></p>';
+      checkoutPanel.classList.add("hidden");
+      return;
+    }
+
+    checkoutPanel.classList.remove("hidden");
+    const { gross, patronage } = cartTotals(cart);
+
+    root.innerHTML = `
+      <div class="lines">
+        ${cart
+          .map(
+            (line) => `
+          <div class="line" data-sku="${line.sku}">
+            <div>
+              <strong>${line.name}</strong>
+              <div class="hint">${line.sku} · ${line.vendorCode}</div>
+            </div>
+            <div>
+              <button type="button" class="qty-btn" data-dec="${line.sku}">−</button>
+              <span style="margin:0 0.5rem">${line.quantity}</span>
+              <button type="button" class="qty-btn" data-inc="${line.sku}">+</button>
+              <div>${formatPhp(Number(line.unitPrice) * line.quantity)}</div>
+            </div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      <div class="totals">
+        <div><strong>Total:</strong> ${formatPhp(gross)}</div>
+        <div class="hint">Est. patronage ${formatPhp(patronage)}</div>
+      </div>
+    `;
+
+    root.querySelectorAll("[data-dec]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sku = btn.getAttribute("data-dec");
+        const line = readCart().find((l) => l.sku === sku);
+        if (line) updateQty(sku, line.quantity - 1);
+        render();
+      });
+    });
+    root.querySelectorAll("[data-inc]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sku = btn.getAttribute("data-inc");
+        const line = readCart().find((l) => l.sku === sku);
+        if (line) updateQty(sku, line.quantity + 1);
+        render();
+      });
+    });
+  }
+
+  checkoutForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    checkoutError.classList.add("hidden");
+    const fd = new FormData(checkoutForm);
+    const cart = readCart();
+    const body = {
+      email: String(fd.get("email") ?? ""),
+      displayName: String(fd.get("displayName") ?? "") || undefined,
+      items: cart.map((l) => ({ sku: l.sku, quantity: l.quantity })),
+    };
+
+    try {
+      const res = await fetch(`${apiBase}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Checkout failed");
+      clearCart();
+      window.location.href = `/order/${data.orderId}`;
+    } catch (err) {
+      checkoutError.textContent = err instanceof Error ? err.message : "Checkout failed";
+      checkoutError.classList.remove("hidden");
+    }
+  });
+
+  render();
+</script>

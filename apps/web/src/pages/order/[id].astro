@@ -1,0 +1,167 @@
+---
+import Layout from "../../layouts/Layout.astro";
+
+const { id } = Astro.params;
+const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
+
+let order: Record<string, unknown> | null = null;
+let error = "";
+
+if (!id) {
+  error = "Missing order id";
+} else {
+  try {
+    const res = await fetch(`${apiBase}/orders/${id}`);
+    if (!res.ok) {
+      error = "Order not found";
+    } else {
+      order = await res.json();
+    }
+  } catch {
+    error = "Could not load order — is the API running?";
+  }
+}
+
+function formatPhp(value: string | number) {
+  return `₱${Number(value).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+const lines = (order?.lines as Array<Record<string, unknown>>) ?? [];
+---
+
+<Layout title={`Order ${id} — B2CCoop Store`}>
+  {error ? (
+    <p class="error">{error}</p>
+  ) : order ? (
+    <>
+      <section class="hero">
+        <p class="eyebrow">Order receipt</p>
+        <h1>{formatPhp(String(order.grossAmount))}</h1>
+        <p class="status" data-status={order.status}>{order.status}</p>
+        <p class="hint">{order.pickupNote ?? "Pay at pickup counter when you collect your order."}</p>
+      </section>
+
+      <dl class="meta-grid">
+        <dt>Order ID</dt>
+        <dd><code>{order.orderId}</code></dd>
+        <dt>Email</dt>
+        <dd>{order.guestEmail}</dd>
+        <dt>Vendor</dt>
+        <dd>{order.vendorCode}</dd>
+        <dt>Patronage</dt>
+        <dd>{formatPhp(String(order.patronageAmount))}</dd>
+      </dl>
+
+      <ul class="lines">
+        {lines.map((line) => (
+          <li>
+            {line.quantity}× {line.productName}
+            <span>{formatPhp(String(line.lineGross))}</span>
+          </li>
+        ))}
+      </ul>
+
+      {order.status === "PENDING_PICKUP" && (
+        <section class="staff panel">
+          <h2>Staff — confirm pickup payment</h2>
+          <p class="hint">Posts to Accounting when configured. Dev secret from <code>apps/api/.dev.vars</code>.</p>
+          <label>
+            DEV_ADMIN_SECRET
+            <input type="password" id="admin-secret" placeholder="Bearer token" />
+          </label>
+          <button type="button" id="confirm-pickup" class="primary">Mark paid & post ledger</button>
+          <p id="admin-msg" class="hidden"></p>
+        </section>
+      )}
+    </>
+  ) : null}
+</Layout>
+
+<style>
+  .hero { margin-bottom: 1.5rem; }
+  .eyebrow { text-transform: uppercase; font-size: 0.75rem; color: #64748b; margin: 0; }
+  h1 { margin: 0.25rem 0; font-size: 2rem; color: #0e7490; }
+  .status { font-weight: 600; margin: 0.25rem 0; }
+  .hint { color: #64748b; font-size: 0.9rem; }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.5rem 1rem;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  dt { color: #64748b; }
+  dd { margin: 0; }
+  code { font-size: 0.8rem; }
+  .lines { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+  .lines li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .panel {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+  }
+  .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+  label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; }
+  input {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+  .primary {
+    background: #b45309;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .error { color: #b91c1c; }
+  .hidden { display: none; }
+  #admin-msg.ok { color: #15803d; }
+  #admin-msg.bad { color: #b91c1c; }
+</style>
+
+<script define:vars={{ apiBase, orderId: id }}>
+  const btn = document.getElementById("confirm-pickup");
+  const secretInput = document.getElementById("admin-secret");
+  const msg = document.getElementById("admin-msg");
+
+  btn?.addEventListener("click", async () => {
+    const secret = secretInput?.value?.trim();
+    if (!secret) {
+      msg.textContent = "Enter DEV_ADMIN_SECRET";
+      msg.className = "bad";
+      msg.classList.remove("hidden");
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${apiBase}/admin/orders/${orderId}/confirm-pickup`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Confirm failed");
+      msg.textContent = `Posted — status ${data.status}`;
+      msg.className = "ok";
+      msg.classList.remove("hidden");
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err) {
+      msg.textContent = err instanceof Error ? err.message : "Confirm failed";
+      msg.className = "bad";
+      msg.classList.remove("hidden");
+      btn.disabled = false;
+    }
+  });
+</script>

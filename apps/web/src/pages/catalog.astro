@@ -88,6 +88,19 @@ const byCategory = (catalog?.items ?? []).reduce<Record<string, CatalogItem[]>>(
                 <h3>{item.name}</h3>
                 <p class="price">{formatPhp(item.unitPrice)}</p>
                 <p class="meta">Patronage {formatPhp(item.patronagePerUnit)} · {item.vendorCode}</p>
+                <button
+                  type="button"
+                  class="add-btn"
+                  data-add-cart={JSON.stringify({
+                    sku: item.sku,
+                    name: item.name,
+                    unitPrice: item.unitPrice,
+                    patronagePerUnit: item.patronagePerUnit,
+                    vendorCode: item.vendorCode,
+                  })}
+                >
+                  Add to cart
+                </button>
               </li>
             ))}
           </ul>
@@ -144,4 +157,29 @@ const byCategory = (catalog?.items ?? []).reduce<Record<string, CatalogItem[]>>(
   .price { margin: 0; font-weight: 700; color: #0e7490; }
   .meta { margin: 0.35rem 0 0; font-size: 0.75rem; color: #64748b; }
   .error { color: #b91c1c; }
+  .add-btn {
+    margin-top: 0.75rem;
+    width: 100%;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #0e7490;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .add-btn:hover { background: #0c6378; }
 </style>
+
+<script type="module">
+  import { addToCart } from "/scripts/cart.js";
+
+  document.querySelectorAll("[data-add-cart]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = JSON.parse(btn.getAttribute("data-add-cart") ?? "{}");
+      addToCart(item);
+      btn.textContent = "Added ✓";
+      setTimeout(() => { btn.textContent = "Add to cart"; }, 1200);
+    });
+  });
+</script>

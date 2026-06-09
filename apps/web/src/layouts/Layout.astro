@@ -17,12 +17,17 @@ const { title } = Astro.props;
   <body>
     <header>
       <a href="/" class="brand">B2CCoop Store</a>
+      <nav>
+        <a href="/catalog">Catalog</a>
+        <a href="/cart">Cart</a>
+        <a href="/admin">Staff</a>
+      </nav>
     </header>
     <main>
       <slot />
     </main>
     <footer>
-      <small>B2C Consumers Cooperative · Phase 0 scaffold</small>
+      <small>B2C Consumers Cooperative · Phase 1 MVP</small>
     </footer>
   </body>
 </html>
@@ -49,6 +54,23 @@ const { title } = Astro.props;
   header {
     border-bottom: 1px solid #e2e8f0;
     padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+  }
+  nav a {
+    color: #475569;
+    text-decoration: none;
+  }
+  nav a:hover {
+    color: #0e7490;
   }
   .brand {
     font-weight: 700;

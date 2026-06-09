@@ -17,9 +17,28 @@ Skip dev orders only: `SEED_DEV_FIXTURES=0 npm run db:seed`
 
 | URL | Purpose |
 |-----|---------|
-| http://localhost:8787/catalog | All active products + dev account hints |
-| http://localhost:8787/dev/fixtures | Shoppers, staff, sample orders, demo cart |
-| http://localhost:5175/catalog | Storefront catalog page |
+| http://localhost:8787/catalog | All active products |
+| http://localhost:8787/checkout | Guest checkout → `PENDING_PICKUP` |
+| http://localhost:8787/orders/:id | Order receipt |
+| http://localhost:8787/admin/orders/pending | Staff pickup queue |
+| http://localhost:8787/dev/fixtures | Shoppers, staff, sample orders |
+
+## Storefront (dev)
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:5175/catalog | Browse + add to cart |
+| http://localhost:5175/cart | Checkout form |
+| http://localhost:5175/admin | Staff pending queue |
+| http://localhost:5175/order/:id | Receipt + confirm pickup |
+
+## Phase 1 test flow
+
+1. Open **Catalog** → add rice + oil → **Cart**
+2. Checkout as `guest.shopper@b2ccoop.test`
+3. On receipt page, staff enters `DEV_ADMIN_SECRET` → **Mark paid & post ledger**
+4. With Accounting running (`localhost:3010`), order becomes `POSTED_TO_LEDGER`
+
 
 ## Mock shoppers (checkout)
 
