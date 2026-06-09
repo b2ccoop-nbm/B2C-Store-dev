@@ -28,7 +28,10 @@ export function resolveDatabaseUrl(env: WorkerEnv): string | null {
 
 export function corsOrigins(env: WorkerEnv): string[] {
   if (env.ENVIRONMENT === "production") {
-    return ["https://store.b2ccoop.com"];
+    return [
+      "https://store.b2ccoop.com",
+      "https://b2ccoop-store.pages.dev",
+    ];
   }
   return ["http://localhost:5175", "http://127.0.0.1:5175"];
 }

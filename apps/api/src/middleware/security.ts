@@ -25,7 +25,9 @@ export function corsMiddleware(allowedOrigins: string[], environment = "developm
     const origin = c.req.header("Origin") ?? "";
     const allowed =
       allowedOrigins.includes(origin) ||
-      (origin.startsWith("http://localhost:") && environment === "development");
+      (origin.startsWith("http://localhost:") && environment === "development") ||
+      (environment === "production" &&
+        /^https:\/\/[a-z0-9-]+\.b2ccoop-store\.pages\.dev$/i.test(origin));
 
     if (allowed && origin) {
       c.header("Access-Control-Allow-Origin", origin);
