@@ -1,0 +1,20 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  class?: string;
+  variant?: "text" | "circle" | "rect";
+}
+
+const { class: className, variant = "rect" } = Astro.props;
+
+const variantClass = {
+  text: "h-4 w-full rounded",
+  circle: "h-10 w-10 rounded-full",
+  rect: "h-24 w-full rounded-lg",
+}[variant];
+
+const classes = cn("animate-pulse bg-neutral-200", variantClass, className);
+---
+
+<div class={classes} aria-hidden="true" />

@@ -1,0 +1,46 @@
+---
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import Card from "@/components/atoms/Card.astro";
+import Button from "@/components/atoms/Button.astro";
+import Input from "@/components/atoms/Input.astro";
+---
+
+<MarketplaceLayout title="My activity">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Find your order</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Enter the order ID from your confirmation email or receipt.
+    </p>
+  </header>
+
+  <Card class="max-w-md">
+    <form id="find-order-form" class="space-y-4">
+      <Input
+        id="order-id"
+        name="orderId"
+        label="Order ID"
+        placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
+        required
+        autocomplete="off"
+      />
+      <Input
+        id="order-email"
+        name="email"
+        type="email"
+        label="Email used at checkout"
+        placeholder="you@example.com"
+        required
+      />
+      <Button type="submit" variant="primary" fullWidth>
+        View order
+      </Button>
+    </form>
+    <p id="find-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+</MarketplaceLayout>
+
+<script>
+  import { setupFindOrder } from "@/scripts/find-order";
+  import { API_BASE } from "@/lib/api";
+  setupFindOrder(API_BASE);
+</script>

@@ -846,6 +846,8 @@ Sprints assume **2-week cadence**, one team, mobile-first. Backend API tasks run
 
 **Exit criteria:** Member sees patronage on Coop page; activity lists orders by email.
 
+> **Out of sprint scope:** [VALUE-ENGINE.md](./VALUE-ENGINE.md) (Booster Credits, Pending Credits, referrals) is **Platform Phase P4** — not Sprint 5 or earlier. Sprint 5 uses existing patronage + passbook link only.
+
 ---
 
 ## Sprint 6 — Administration & growth

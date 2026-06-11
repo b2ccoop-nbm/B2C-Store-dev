@@ -1,0 +1,42 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  href?: string;
+  active?: boolean;
+  removable?: boolean;
+  class?: string;
+}
+
+const { href, active = false, removable = false, class: className } = Astro.props;
+
+const classes = cn(
+  "inline-flex items-center gap-1.5 min-h-touch px-4 rounded-full border text-body-sm font-medium transition-colors",
+  active
+    ? "bg-brand-600 text-white border-brand-600"
+    : "bg-neutral-0 text-neutral-900 border-neutral-200 hover:border-brand-600",
+  className,
+);
+---
+
+{
+  href ? (
+    <a href={href} class={classes} aria-pressed={active ? "true" : "false"}>
+      <slot />
+      {removable && (
+        <span class="text-neutral-500" aria-hidden="true">
+          ×
+        </span>
+      )}
+    </a>
+  ) : (
+    <button type="button" class={classes} aria-pressed={active ? "true" : "false"}>
+      <slot />
+      {removable && (
+        <span class="text-neutral-500" aria-hidden="true">
+          ×
+        </span>
+      )}
+    </button>
+  )
+}

@@ -1,0 +1,26 @@
+---
+import type { CatalogItemPublic } from "@b2ccoop/store-shared";
+import ProductCard from "./ProductCard.astro";
+import EmptyState from "@/components/atoms/EmptyState.astro";
+
+interface Props {
+  items: CatalogItemPublic[];
+  emptyTitle?: string;
+}
+
+const { items, emptyTitle = "No products found" } = Astro.props;
+---
+
+{
+  items.length === 0 ? (
+    <EmptyState title={emptyTitle} description="Check back soon or try another category." />
+  ) : (
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 list-none m-0 p-0">
+      {items.map((item) => (
+        <li class="min-h-0">
+          <ProductCard item={item} />
+        </li>
+      ))}
+    </ul>
+  )
+}

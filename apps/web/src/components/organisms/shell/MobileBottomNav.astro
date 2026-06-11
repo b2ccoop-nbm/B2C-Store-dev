@@ -1,0 +1,75 @@
+---
+import { BOTTOM_NAV } from "@/lib/constants";
+
+interface Props {
+  activePath: string;
+}
+
+const { activePath } = Astro.props;
+
+function isActive(href: string, path: string): boolean {
+  if (href === "/") return path === "/";
+  return path === href || path.startsWith(`${href}/`);
+}
+---
+
+<nav
+  class="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-neutral-200 bg-neutral-0/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+  aria-label="Primary"
+>
+  <ul class="grid grid-cols-5 m-0 p-0 list-none">
+    {
+      BOTTOM_NAV.map((item) => {
+        const active = isActive(item.href, activePath);
+        const linkClass = [
+          "flex flex-col items-center justify-center gap-0.5 min-h-touch py-1 text-caption font-medium no-underline",
+          active ? "text-brand-600" : "text-neutral-500",
+        ].join(" ");
+        return (
+          <li>
+            <a href={item.href} class={linkClass} aria-current={active ? "page" : undefined}>
+              {item.id === "home" && (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <path d="M9 22V12h6v10" />
+                </svg>
+              )}
+              {item.id === "search" && (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              )}
+              {item.id === "cart" && (
+                <span class="relative inline-flex">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="8" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                  </svg>
+                  <span
+                    data-cart-badge
+                    class="hidden absolute -right-2 -top-1 min-w-[1.125rem] rounded-full bg-brand-600 px-1 text-center text-[10px] font-bold leading-4 text-white"
+                    aria-hidden="true"
+                  />
+                </span>
+              )}
+              {item.id === "messages" && (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              )}
+              {item.id === "you" && (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              )}
+              <span>{item.label}</span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</nav>

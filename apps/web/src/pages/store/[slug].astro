@@ -1,0 +1,10 @@
+---
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import RouteStub from "@/features/shared/RouteStub.astro";
+
+const { slug } = Astro.params;
+---
+
+<MarketplaceLayout title="Storefront">
+  <RouteStub title="Merchant storefront" description={`Storefront for “${slug}”. Ships in Sprint 5.`} />
+</MarketplaceLayout>

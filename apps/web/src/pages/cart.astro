@@ -1,327 +1,59 @@
 ---
-import Layout from "../layouts/Layout.astro";
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import CartPage from "@/components/islands/CartPage.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
-const firebaseConfigured = Boolean(
-  import.meta.env.PUBLIC_FIREBASE_API_KEY?.trim() &&
-    import.meta.env.PUBLIC_FIREBASE_PROJECT_ID?.trim(),
-);
-const firebaseConfig = {
-  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY ?? "",
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
-  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID ?? "",
-};
 ---
 
-<Layout title="Cart — B2CCoop Store">
-  <section class="hero">
-    <h1>Your cart</h1>
-    <p class="lead">Pay on pickup or online (PayMongo when configured).</p>
-  </section>
+<MarketplaceLayout title="Cart">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Your cart</h1>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">Pay at pickup when you collect your order.</p>
+  </header>
 
   <div id="cart-root">
-    <p>Loading cart…</p>
+    <p class="text-neutral-500">Loading cart…</p>
   </div>
 
-  <section id="checkout-panel" class="checkout hidden">
-    <h2>Checkout</h2>
-    {firebaseConfigured && (
-      <section class="member-panel">
-        <p class="hint">Members: sign in to link patronage to your account.</p>
-        <button type="button" id="member-signin" class="secondary">Sign in with email</button>
-        <button type="button" id="member-signout" class="secondary hidden">Sign out</button>
-        <p id="member-status" class="hint hidden"></p>
-      </section>
-    )}
-    <form id="checkout-form">
-      <label>
-        Email
-        <input type="email" name="email" id="checkout-email" required placeholder="guest.shopper@b2ccoop.test" />
+  <section id="checkout-panel" class="hidden mt-8 pt-8 border-t border-neutral-200">
+    <h2 class="text-title-sm m-0 mb-4">Checkout</h2>
+    <form id="checkout-form" class="max-w-md space-y-4">
+      <label class="block">
+        <span class="text-body-sm font-medium">Email</span>
+        <input
+          type="email"
+          name="email"
+          id="checkout-email"
+          required
+          placeholder="you@example.com"
+          class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body"
+        />
       </label>
-      <label>
-        Name (optional)
-        <input type="text" name="displayName" placeholder="Your name" />
+      <label class="block">
+        <span class="text-body-sm font-medium">Name (optional)</span>
+        <input
+          type="text"
+          name="displayName"
+          placeholder="Your name"
+          class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body"
+        />
       </label>
-      <fieldset class="payment-methods">
-        <legend>Payment</legend>
-        <label class="inline">
-          <input type="radio" name="paymentMethod" value="pickup" checked />
-          Pay on pickup
-        </label>
-        <label class="inline">
-          <input type="radio" name="paymentMethod" value="online" />
-          Pay online (PayMongo)
-        </label>
-      </fieldset>
-      {turnstileSiteKey && (
-        <div class="turnstile-wrap">
-          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} id="turnstile-widget"></div>
-        </div>
-      )}
-      <button type="submit" class="primary" id="checkout-submit">Place order</button>
+      {
+        turnstileSiteKey && (
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} id="turnstile-widget" />
+        )
+      }
+      <Button type="submit" variant="primary" fullWidth id="checkout-submit">
+        Place order — pay at pickup
+      </Button>
     </form>
-    <p id="checkout-error" class="error hidden"></p>
+    <p id="checkout-error" class="hidden text-body-sm text-danger-600 mt-3" role="alert" />
   </section>
 
   {turnstileSiteKey && (
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
   )}
-</Layout>
 
-<style>
-  .hero { margin-bottom: 1.5rem; }
-  h1 { margin: 0 0 0.25rem; }
-  .lead { color: #64748b; margin: 0; }
-  .hidden { display: none; }
-  .line {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .totals {
-    margin: 1rem 0;
-    padding: 1rem;
-    background: #f8fafc;
-    border-radius: 0.75rem;
-  }
-  .checkout {
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e2e8f0;
-  }
-  form label {
-    display: block;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
-  input {
-    display: block;
-    width: 100%;
-    margin-top: 0.35rem;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 0.5rem;
-    font: inherit;
-  }
-  .primary {
-    background: #0e7490;
-    color: #fff;
-    border: none;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .error { color: #b91c1c; margin-top: 0.75rem; }
-  .hint { font-size: 0.85rem; color: #64748b; }
-  .member-panel {
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
-    background: #f0fdfa;
-    border-radius: 0.5rem;
-    border: 1px solid #99f6e4;
-  }
-  .secondary {
-    background: #fff;
-    border: 1px solid #0e7490;
-    color: #0e7490;
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-right: 0.5rem;
-  }
-  .payment-methods {
-    border: none;
-    margin: 0 0 1rem;
-    padding: 0;
-  }
-  .payment-methods legend {
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-  .inline {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
-    margin-bottom: 0.35rem;
-  }
-  .turnstile-wrap { margin-bottom: 1rem; }
-  .empty { color: #64748b; }
-  .qty-btn {
-    width: 2rem;
-    height: 2rem;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    border-radius: 0.35rem;
-    cursor: pointer;
-  }
-</style>
-
-<script is:inline define:vars={{ apiBase, turnstileSiteKey, firebaseConfigured, firebaseConfig }}>
-  import {
-    readCart,
-    updateQty,
-    clearCart,
-    cartTotals,
-    formatPhp,
-  } from "/scripts/cart.js";
-
-  const root = document.getElementById("cart-root");
-  const checkoutPanel = document.getElementById("checkout-panel");
-  const checkoutForm = document.getElementById("checkout-form");
-  const checkoutError = document.getElementById("checkout-error");
-  const checkoutSubmit = document.getElementById("checkout-submit");
-  const emailInput = document.getElementById("checkout-email");
-  let firebaseIdToken = null;
-
-  async function initFirebaseAuth() {
-    if (!firebaseConfigured) return;
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js");
-    const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
-      await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js");
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const signInBtn = document.getElementById("member-signin");
-    const signOutBtn = document.getElementById("member-signout");
-    const memberStatus = document.getElementById("member-status");
-
-    signInBtn?.addEventListener("click", async () => {
-      const email = prompt("Member email", emailInput?.value ?? "");
-      const password = prompt("Password");
-      if (!email || !password) return;
-      try {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Sign-in failed");
-      }
-    });
-
-    signOutBtn?.addEventListener("click", async () => {
-      await signOut(auth);
-    });
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user?.email) {
-        firebaseIdToken = await user.getIdToken();
-        if (emailInput) emailInput.value = user.email;
-        memberStatus.textContent = `Signed in as ${user.email}`;
-        memberStatus.classList.remove("hidden");
-        signInBtn?.classList.add("hidden");
-        signOutBtn?.classList.remove("hidden");
-      } else {
-        firebaseIdToken = null;
-        memberStatus.classList.add("hidden");
-        signInBtn?.classList.remove("hidden");
-        signOutBtn?.classList.add("hidden");
-      }
-    });
-  }
-
-  initFirebaseAuth();
-
-  function render() {
-    const cart = readCart();
-    if (!cart.length) {
-      root.innerHTML = '<p class="empty">Cart is empty. <a href="/catalog">Browse catalog</a></p>';
-      checkoutPanel.classList.add("hidden");
-      return;
-    }
-
-    checkoutPanel.classList.remove("hidden");
-    const { gross, patronage } = cartTotals(cart);
-
-    root.innerHTML = `
-      <div class="lines">
-        ${cart
-          .map(
-            (line) => `
-          <div class="line" data-sku="${line.sku}">
-            <div>
-              <strong>${line.name}</strong>
-              <div class="hint">${line.sku} · ${line.vendorCode}</div>
-            </div>
-            <div>
-              <button type="button" class="qty-btn" data-dec="${line.sku}">−</button>
-              <span style="margin:0 0.5rem">${line.quantity}</span>
-              <button type="button" class="qty-btn" data-inc="${line.sku}">+</button>
-              <div>${formatPhp(Number(line.unitPrice) * line.quantity)}</div>
-            </div>
-          </div>`,
-          )
-          .join("")}
-      </div>
-      <div class="totals">
-        <div><strong>Total:</strong> ${formatPhp(gross)}</div>
-        <div class="hint">Est. patronage ${formatPhp(patronage)}</div>
-      </div>
-    `;
-
-    root.querySelectorAll("[data-dec]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const sku = btn.getAttribute("data-dec");
-        const line = readCart().find((l) => l.sku === sku);
-        if (line) updateQty(sku, line.quantity - 1);
-        render();
-      });
-    });
-    root.querySelectorAll("[data-inc]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const sku = btn.getAttribute("data-inc");
-        const line = readCart().find((l) => l.sku === sku);
-        if (line) updateQty(sku, line.quantity + 1);
-        render();
-      });
-    });
-  }
-
-  checkoutForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    checkoutError.classList.add("hidden");
-    const fd = new FormData(checkoutForm);
-    const cart = readCart();
-    const paymentMethod = String(fd.get("paymentMethod") ?? "pickup");
-    const turnstileToken = turnstileSiteKey
-      ? document.querySelector("[name=cf-turnstile-response]")?.value
-      : undefined;
-
-    const body = {
-      email: String(fd.get("email") ?? ""),
-      displayName: String(fd.get("displayName") ?? "") || undefined,
-      paymentMethod,
-      items: cart.map((l) => ({ sku: l.sku, quantity: l.quantity })),
-      ...(turnstileToken ? { turnstileToken } : {}),
-      ...(firebaseIdToken ? { firebaseIdToken } : {}),
-    };
-
-    if (checkoutSubmit) checkoutSubmit.disabled = true;
-    try {
-      const res = await fetch(`${apiBase}/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Checkout failed");
-      clearCart();
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-      window.location.href = `/order/${data.orderId}`;
-    } catch (err) {
-      checkoutError.textContent = err instanceof Error ? err.message : "Checkout failed";
-      checkoutError.classList.remove("hidden");
-      if (checkoutSubmit) checkoutSubmit.disabled = false;
-    }
-  });
-
-  render();
-</script>
+  <CartPage />
+</MarketplaceLayout>

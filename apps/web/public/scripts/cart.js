@@ -1,4 +1,4 @@
-const CART_KEY = "b2ccoop_store_cart";
+const CART_KEY = "b2ccoop_store_cart"; // keep in sync with src/lib/cart.ts
 
 /** @typedef {{ sku: string; name: string; unitPrice: string; patronagePerUnit: string; vendorCode: string; quantity: number }} CartLine */
 
@@ -13,6 +13,7 @@ export function readCart() {
 
 export function writeCart(/** @type {CartLine[]} */ lines) {
   localStorage.setItem(CART_KEY, JSON.stringify(lines));
+  window.dispatchEvent(new CustomEvent("cart-updated"));
 }
 
 export function addToCart(item) {

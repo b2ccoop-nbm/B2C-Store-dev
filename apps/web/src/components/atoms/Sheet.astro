@@ -1,0 +1,84 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  id: string;
+  title: string;
+  side?: "bottom" | "right";
+  class?: string;
+}
+
+const { id, title, side = "bottom", class: className } = Astro.props;
+
+const sideClass =
+  side === "bottom"
+    ? "fixed inset-x-0 bottom-0 max-h-[85vh] rounded-t-xl"
+    : "fixed inset-y-0 right-0 max-w-md w-full rounded-l-xl";
+---
+
+<div
+  id={`${id}-backdrop`}
+  class="fixed inset-0 z-40 hidden bg-neutral-900/50"
+  data-sheet-backdrop={id}
+  aria-hidden="true"
+>
+</div>
+<section
+  id={id}
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby={`${id}-title`}
+  class={cn(
+    "fixed z-50 hidden flex-col bg-neutral-0 border border-neutral-200 elevation-4",
+    sideClass,
+    className,
+  )}
+  data-sheet={id}
+>
+  <header class="flex items-center justify-between gap-4 border-b border-neutral-200 px-4 py-3 shrink-0">
+    <h2 id={`${id}-title`} class="text-title-sm m-0">{title}</h2>
+    <button
+      type="button"
+      class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-50"
+      data-sheet-close={id}
+      aria-label="Close panel"
+    >
+      <span aria-hidden="true">×</span>
+    </button>
+  </header>
+  <div class="overflow-y-auto p-4 flex-1">
+    <slot />
+  </div>
+</section>
+
+<script>
+  function bindSheets() {
+    document.querySelectorAll<HTMLElement>("[data-sheet]").forEach((sheet) => {
+      const id = sheet.dataset.sheet!;
+      const backdrop = document.querySelector<HTMLElement>(`[data-sheet-backdrop="${id}"]`);
+
+      const open = () => {
+        sheet.classList.remove("hidden");
+        sheet.classList.add("flex");
+        backdrop?.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      };
+      const close = () => {
+        sheet.classList.add("hidden");
+        sheet.classList.remove("flex");
+        backdrop?.classList.add("hidden");
+        document.body.style.overflow = "";
+      };
+
+      document.querySelectorAll(`[data-sheet-open="${id}"]`).forEach((btn) => {
+        btn.addEventListener("click", open);
+      });
+      document.querySelectorAll(`[data-sheet-close="${id}"]`).forEach((btn) => {
+        btn.addEventListener("click", close);
+      });
+      backdrop?.addEventListener("click", close);
+    });
+  }
+  bindSheets();
+  document.addEventListener("astro:page-load", bindSheets);
+</script>

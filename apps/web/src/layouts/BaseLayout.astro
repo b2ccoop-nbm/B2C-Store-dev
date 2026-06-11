@@ -1,0 +1,29 @@
+---
+import "@/styles/global.css";
+import SkipLink from "@/components/organisms/shell/SkipLink.astro";
+import Toast from "@/components/atoms/Toast.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "B2CCoop cooperative marketplace" } = Astro.props;
+const pageTitle = title.includes("B2CCoop") ? title : `${title} · B2CCoop`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <SkipLink />
+    <slot name="banner" />
+    <slot />
+    <Toast />
+  </body>
+</html>

@@ -1,0 +1,37 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import DesktopHeader from "@/components/organisms/shell/DesktopHeader.astro";
+import MobileHeader from "@/components/organisms/shell/MobileHeader.astro";
+import MobileBottomNav from "@/components/organisms/shell/MobileBottomNav.astro";
+import TrustFooter from "@/components/organisms/shell/TrustFooter.astro";
+import OfficerBanner from "@/components/organisms/shell/OfficerBanner.astro";
+import CartInteractions from "@/components/islands/CartInteractions.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  mobileHeaderTitle?: string;
+  hideBottomNav?: boolean;
+}
+
+const {
+  title,
+  description,
+  mobileHeaderTitle,
+  hideBottomNav = false,
+} = Astro.props;
+
+const activePath = Astro.url.pathname;
+---
+
+<BaseLayout title={title} description={description}>
+  <OfficerBanner slot="banner" />
+  <MobileHeader title={mobileHeaderTitle ?? title} />
+  <DesktopHeader activePath={activePath} />
+  <main id="main-content" class="mx-auto min-h-[60vh] max-w-7xl px-4 py-6 md:px-6 pb-nav-safe">
+    <slot />
+  </main>
+  <TrustFooter />
+  {!hideBottomNav && <MobileBottomNav activePath={activePath} />}
+  <CartInteractions />
+</BaseLayout>

@@ -1,0 +1,41 @@
+---
+import type { CatalogItemPublic } from "@b2ccoop/store-shared";
+import Card from "@/components/atoms/Card.astro";
+import Button from "@/components/atoms/Button.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { formatPhp } from "@/lib/format";
+import { productSlug } from "@/lib/product-slug";
+
+interface Props {
+  item: CatalogItemPublic;
+}
+
+const { item } = Astro.props;
+const slug = productSlug(item.sku);
+const cartPayload = JSON.stringify({
+  sku: item.sku,
+  name: item.name,
+  unitPrice: item.unitPrice,
+  patronagePerUnit: item.patronagePerUnit,
+  vendorCode: item.vendorCode,
+});
+---
+
+<Card class="flex flex-col h-full">
+  <a href={`/offering/${slug}`} class="no-underline text-inherit flex-1">
+    <Badge variant="neutral" class="mb-2">{item.category}</Badge>
+    <h3 class="text-title-sm m-0 mb-1 line-clamp-2">{item.name}</h3>
+    <p class="text-caption text-neutral-500 m-0 mb-3">{item.sku}</p>
+    <p class="text-price text-brand-600 m-0">{formatPhp(item.unitPrice)}</p>
+  </a>
+  <Button
+    type="button"
+    variant="primary"
+    size="sm"
+    fullWidth
+    class="mt-4 b2c-add-to-cart"
+    data-cart-item={cartPayload}
+  >
+    Add to cart
+  </Button>
+</Card>

@@ -1,0 +1,45 @@
+---
+/** Toast container — mount once in layout; trigger via window.b2cToast() */
+---
+
+<div
+  id="b2c-toast-region"
+  class="fixed bottom-[calc(var(--spacing-nav)+1rem)] left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none md:left-auto md:right-6 md:max-w-sm"
+  role="region"
+  aria-live="polite"
+  aria-label="Notifications"
+>
+</div>
+
+<script>
+  type ToastVariant = "default" | "success" | "danger";
+
+  declare global {
+    interface Window {
+      b2cToast?: (message: string, variant?: ToastVariant) => void;
+    }
+  }
+
+  function initToast() {
+    const region = document.getElementById("b2c-toast-region");
+    if (!region) return;
+
+    window.b2cToast = (message: string, variant: ToastVariant = "default") => {
+      const el = document.createElement("div");
+      el.setAttribute("role", "alert");
+      el.className =
+        "pointer-events-auto elevation-2 px-4 py-3 rounded-lg text-body-sm font-medium text-neutral-900 " +
+        (variant === "success"
+          ? "border-l-4 border-success-600"
+          : variant === "danger"
+            ? "border-l-4 border-danger-600"
+            : "border-l-4 border-brand-600");
+      el.textContent = message;
+      region.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    };
+  }
+
+  initToast();
+  document.addEventListener("astro:page-load", initToast);
+</script>

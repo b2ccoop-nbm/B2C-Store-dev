@@ -1,192 +1,144 @@
 ---
-import Layout from "../../layouts/Layout.astro";
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import Card from "@/components/atoms/Card.astro";
+import type { OrderDetail } from "@b2ccoop/store-shared";
+import { API_BASE } from "@/lib/api";
+import { formatPhp } from "@/lib/format";
+import { orderStatusLabel } from "@/lib/order-status";
 
 const { id } = Astro.params;
-const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
-
-let order: Record<string, unknown> | null = null;
+let order: OrderDetail | null = null;
 let error = "";
 
 if (!id) {
   error = "Missing order id";
 } else {
   try {
-    const res = await fetch(`${apiBase}/orders/${id}`);
+    const res = await fetch(`${API_BASE}/orders/${id}`);
     if (!res.ok) {
       error = "Order not found";
     } else {
-      order = await res.json();
+      order = (await res.json()) as OrderDetail;
     }
   } catch {
     error = "Could not load order — is the API running?";
   }
 }
 
-function formatPhp(value: string | number) {
-  return `₱${Number(value).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+const statusVariant =
+  order?.status === "POSTED_TO_LEDGER"
+    ? "success"
+    : order?.status === "FAILED"
+      ? "danger"
+      : order?.status === "PENDING_PICKUP"
+        ? "warning"
+        : "neutral";
 
-const lines = (order?.lines as Array<Record<string, unknown>>) ?? [];
+const showStaffConfirm =
+  order?.status === "PENDING_PICKUP" || order?.status === "FAILED";
 ---
 
-<Layout title={`Order ${id} — B2CCoop Store`}>
-  {error ? (
-    <p class="error">{error}</p>
-  ) : order ? (
-    <>
-      <section class="hero">
-        <p class="eyebrow">Order receipt</p>
-        <h1>{formatPhp(String(order.grossAmount))}</h1>
-        <p class="status" data-status={order.status}>{order.status}</p>
-        <p class="hint">
-          {order.status === "PENDING_PAYMENT"
-            ? "Complete payment on PayMongo — ledger posts after webhook confirmation."
-            : (order.pickupNote ?? "Pay at pickup counter when you collect your order.")}
-        </p>
-      </section>
-
-      <dl class="meta-grid">
-        <dt>Order ID</dt>
-        <dd><code>{order.orderId}</code></dd>
-        <dt>Email</dt>
-        <dd>{order.guestEmail}</dd>
-        <dt>Vendor</dt>
-        <dd>{order.vendorCode}</dd>
-        <dt>Patronage</dt>
-        <dd>{formatPhp(String(order.patronageAmount))}</dd>
-      </dl>
-
-      <ul class="lines">
-        {lines.map((line) => (
-          <li>
-            {line.quantity}× {line.productName}
-            <span>{formatPhp(String(line.lineGross))}</span>
-          </li>
-        ))}
-      </ul>
-
-      {(order.status === "PENDING_PICKUP" || order.status === "FAILED") && (
-        <section class:list={["staff", "panel", order.status === "FAILED" && "panel-failed"]}>
-          <h2>
-            {order.status === "FAILED"
-              ? "Staff — retry ledger post"
-              : "Staff — confirm pickup payment"}
-          </h2>
-          {order.status === "FAILED" && order.accountingError && (
-            <p class="error-block">Last error: {order.accountingError}</p>
-          )}
-          <p class="hint">
-            Posts to Accounting when configured. Start Accounting on <code>localhost:3010</code> in dev.
-            Secret from <code>apps/api/.dev.vars</code>.
+<MarketplaceLayout title={order ? `Order ${order.orderId.slice(0, 8)}…` : "Order"} hideBottomNav>
+  {
+    error ? (
+      <Card>
+        <p class="text-danger-600 m-0">{error}</p>
+        <Button href="/activity" variant="ghost" class="mt-4">Find an order</Button>
+      </Card>
+    ) : order ? (
+      <>
+        <header class="mb-6">
+          <p class="text-caption text-neutral-500 uppercase tracking-wide m-0">Order receipt</p>
+          <h1 class="text-display text-brand-600 m-0 mt-1">{formatPhp(order.grossAmount)}</h1>
+          <Badge variant={statusVariant} class="mt-2">{orderStatusLabel(order.status)}</Badge>
+          <p class="text-body text-neutral-500 mt-3 m-0">
+            {
+              order.status === "PENDING_PICKUP"
+                ? "Bring this order reference to the counter and pay when you pick up."
+                : order.status === "POSTED_TO_LEDGER"
+                  ? "Payment recorded. Thank you for shopping with your coop."
+                  : order.status === "FAILED"
+                    ? "Payment was received but ledger posting failed — staff can retry below."
+                    : "Order status updates will appear here."
+            }
           </p>
-          <label>
-            DEV_ADMIN_SECRET
-            <input type="password" id="admin-secret" placeholder="Bearer token" />
-          </label>
-          <button type="button" id="confirm-pickup" class="primary">
-            {order.status === "FAILED" ? "Retry post to ledger" : "Mark paid & post ledger"}
-          </button>
-          <p id="admin-msg" class="hidden"></p>
-        </section>
-      )}
-    </>
-  ) : null}
-</Layout>
+        </header>
 
-<style>
-  .hero { margin-bottom: 1.5rem; }
-  .eyebrow { text-transform: uppercase; font-size: 0.75rem; color: #64748b; margin: 0; }
-  h1 { margin: 0.25rem 0; font-size: 2rem; color: #0e7490; }
-  .status { font-weight: 600; margin: 0.25rem 0; }
-  .hint { color: #64748b; font-size: 0.9rem; }
-  .meta-grid {
-    display: grid;
-    grid-template-columns: 7rem 1fr;
-    gap: 0.5rem 1rem;
-    font-size: 0.9rem;
-    margin-bottom: 1.5rem;
-  }
-  dt { color: #64748b; }
-  dd { margin: 0; }
-  code { font-size: 0.8rem; }
-  .lines { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-  .lines li {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .panel {
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 0.75rem;
-    padding: 1rem 1.25rem;
-  }
-  .panel-failed {
-    background: #fef2f2;
-    border-color: #fecaca;
-  }
-  .error-block {
-    color: #b91c1c;
-    font-size: 0.875rem;
-    margin: 0 0 0.75rem;
-  }
-  .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; }
-  label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; }
-  input {
-    display: block;
-    width: 100%;
-    margin-top: 0.35rem;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 0.5rem;
-    font: inherit;
-  }
-  .primary {
-    background: #b45309;
-    color: #fff;
-    border: none;
-    border-radius: 0.5rem;
-    padding: 0.65rem 1rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .error { color: #b91c1c; }
-  .hidden { display: none; }
-  #admin-msg.ok { color: #15803d; }
-  #admin-msg.bad { color: #b91c1c; }
-</style>
+        <Card class="mb-6">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 m-0 text-body-sm">
+            <dt class="text-neutral-500">Order ID</dt>
+            <dd class="m-0 font-mono text-body-sm break-all">{order.orderId}</dd>
+            <dt class="text-neutral-500">Email</dt>
+            <dd class="m-0">{order.guestEmail}</dd>
+            <dt class="text-neutral-500">Vendor</dt>
+            <dd class="m-0">{order.vendorCode}</dd>
+          </dl>
+        </Card>
 
-<script define:vars={{ apiBase, orderId: id }}>
-  const btn = document.getElementById("confirm-pickup");
-  const secretInput = document.getElementById("admin-secret");
-  const msg = document.getElementById("admin-msg");
+        <Card class="mb-6">
+          <h2 class="text-title-sm m-0 mb-3">Items</h2>
+          <ul class="list-none m-0 p-0 divide-y divide-neutral-200">
+            {
+              order.lines.map((line) => (
+                <li class="flex justify-between gap-4 py-3 text-body-sm">
+                  <span>
+                    {line.quantity}× {line.productName}
+                  </span>
+                  <span class="font-medium">{formatPhp(line.lineGross)}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </Card>
 
-  btn?.addEventListener("click", async () => {
-    const secret = secretInput?.value?.trim();
-    if (!secret) {
-      msg.textContent = "Enter DEV_ADMIN_SECRET";
-      msg.className = "bad";
-      msg.classList.remove("hidden");
-      return;
-    }
-    btn.disabled = true;
-    try {
-      const res = await fetch(`${apiBase}/admin/orders/${orderId}/confirm-pickup`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${secret}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Confirm failed");
-      msg.textContent = `Posted — status ${data.status}`;
-      msg.className = "ok";
-      msg.classList.remove("hidden");
-      setTimeout(() => window.location.reload(), 800);
-    } catch (err) {
-      msg.textContent = err instanceof Error ? err.message : "Confirm failed";
-      msg.className = "bad";
-      msg.classList.remove("hidden");
-      btn.disabled = false;
-    }
-  });
-</script>
+        {
+          (order.status === "PENDING_PICKUP" || order.status === "FAILED") && (
+            <div id="staff-confirm" data-order-id={order.orderId} data-api-base={API_BASE}>
+            <Card class="border-accent-600 bg-accent-50">
+              <h2 class="text-title-sm m-0 mb-2">
+                {order.status === "FAILED" ? "Staff — retry ledger" : "Staff — confirm pickup"}
+              </h2>
+              {order.accountingError && (
+                <p class="text-body-sm text-danger-600 m-0 mb-3">Last error: {order.accountingError}</p>
+              )}
+              <label class="block text-body-sm font-medium mb-3">
+                Staff secret
+                <input
+                  type="password"
+                  id="admin-secret"
+                  class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200"
+                  autocomplete="off"
+                />
+              </label>
+              <Button type="button" variant="staff" id="confirm-pickup">
+                {order.status === "FAILED" ? "Retry post to ledger" : "Mark paid & post ledger"}
+              </Button>
+              <p id="admin-msg" class="hidden text-body-sm mt-3 m-0" role="status" />
+            </Card>
+            </div>
+          )
+        }
+
+        <div class="mt-6">
+          <Button href="/category/products" variant="secondary">
+            Continue shopping
+          </Button>
+        </div>
+      </>
+    ) : null
+  }
+</MarketplaceLayout>
+
+{
+  showStaffConfirm && (
+    <script>
+      import { setupOrderConfirm } from "@/scripts/order-confirm";
+      const card = document.getElementById("staff-confirm");
+      if (card?.dataset.apiBase && card.dataset.orderId) {
+        setupOrderConfirm(card.dataset.apiBase, card.dataset.orderId);
+      }
+    </script>
+  )
+}

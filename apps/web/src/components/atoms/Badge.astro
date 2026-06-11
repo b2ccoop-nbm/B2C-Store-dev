@@ -1,0 +1,39 @@
+---
+import { cn } from "@/lib/cn";
+
+type Variant = "brand" | "coop" | "member" | "accent" | "neutral" | "success" | "warning" | "danger";
+type Size = "sm" | "md";
+
+interface Props {
+  variant?: Variant;
+  size?: Size;
+  class?: string;
+}
+
+const { variant = "neutral", size = "sm", class: className } = Astro.props;
+
+const variants: Record<Variant, string> = {
+  brand: "bg-brand-50 text-brand-700",
+  coop: "bg-coop-50 text-coop-600",
+  member: "bg-member-50 text-member-600",
+  accent: "bg-accent-50 text-accent-600",
+  neutral: "bg-neutral-50 text-neutral-500 border border-neutral-200",
+  success: "bg-coop-50 text-success-600",
+  warning: "bg-accent-50 text-warning-600",
+  danger: "bg-danger-50 text-danger-600",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "px-2 py-0.5 text-caption",
+  md: "px-2.5 py-1 text-body-sm",
+};
+
+const classes = cn(
+  "inline-flex items-center gap-1 rounded-md font-medium whitespace-nowrap",
+  variants[variant],
+  sizes[size],
+  className,
+);
+---
+
+<span class={classes}><slot /></span>

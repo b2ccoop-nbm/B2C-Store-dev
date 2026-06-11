@@ -1,0 +1,28 @@
+---
+/** Officer / Admin persona banner — visibility controlled client-side */
+---
+
+<div
+  id="officer-banner"
+  class="hidden border-b-2 border-accent-600 bg-accent-50 px-4 py-2 text-center text-body-sm text-neutral-900"
+  role="status"
+  aria-live="polite"
+>
+  <span class="font-semibold text-accent-600">Officer mode</span>
+  <span class="text-neutral-500"> — staff tools active</span>
+</div>
+
+<script>
+  import { $persona, isOfficerPersona } from "@/stores/persona";
+
+  function syncBanner() {
+    const el = document.getElementById("officer-banner");
+    if (!el) return;
+    const show = isOfficerPersona($persona.get());
+    el.classList.toggle("hidden", !show);
+  }
+
+  syncBanner();
+  $persona.subscribe(syncBanner);
+  document.addEventListener("astro:page-load", syncBanner);
+</script>

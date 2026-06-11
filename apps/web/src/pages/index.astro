@@ -1,119 +1,75 @@
 ---
-import Layout from "../layouts/Layout.astro";
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import CatalogGrid from "@/components/molecules/CatalogGrid.astro";
+import Card from "@/components/atoms/Card.astro";
+import { fetchCatalog, groupByCategory } from "@/services/catalog";
 
-const apiBase = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787";
-let health: Record<string, unknown> | null = null;
-let healthError = "";
+let items: Awaited<ReturnType<typeof fetchCatalog>>["items"] = [];
+let error = "";
 
 try {
-  const res = await fetch(`${apiBase}/health`);
-  health = (await res.json()) as Record<string, unknown>;
-} catch {
-  healthError = `Could not reach API at ${apiBase}`;
+  const catalog = await fetchCatalog();
+  items = catalog.items;
+} catch (e) {
+  error = e instanceof Error ? e.message : "Could not load products";
 }
+
+const categories = Object.keys(groupByCategory(items)).sort();
+const featured = items.slice(0, 6);
 ---
 
-<Layout title="B2CCoop Store">
-  <section class="hero">
-    <p class="eyebrow">Phase 0</p>
-    <h1>B2CCoop Store</h1>
-    <p class="lead">
-      Cooperative marketplace for B2C Consumers Cooperative — browse as a guest, pay on pickup at MVP,
-      earn patronage when you link your member account.
+<MarketplaceLayout title="Home" description="B2CCoop cooperative store — shop local products">
+  <section class="mb-8">
+    <Badge variant="coop">B2C Consumers Cooperative</Badge>
+    <h1 class="text-display mt-3 mb-2 text-neutral-900">Shop the coop store</h1>
+    <p class="text-body text-neutral-500 max-w-prose m-0">
+      Browse products, add to cart, and pay when you pick up at the counter.
     </p>
-    <p class="meta">Target domain: <strong>store.b2ccoop.com</strong></p>
-    <p class="links">
-      <a href="/catalog">Browse catalog →</a>
-      ·
-      <a href="/cart">Cart</a>
-    </p>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <Button href="/category/products" variant="primary">All products</Button>
+      <Button href="/search" variant="secondary">Search</Button>
+    </div>
   </section>
 
-  <section class="panel">
-    <h2>API health</h2>
-    {healthError ? (
-      <p class="error">{healthError}</p>
-    ) : health ? (
-      <dl>
-        <dt>Status</dt>
-        <dd class={health.ok ? "ok" : "bad"}>{health.ok ? "OK" : "Degraded"}</dd>
-        <dt>Service</dt>
-        <dd>{health.service as string}</dd>
-        <dt>Database</dt>
-        <dd>{health.database as string}</dd>
-        <dt>Environment</dt>
-        <dd>{health.environment as string}</dd>
-      </dl>
-    ) : (
-      <p>Loading…</p>
-    )}
-  </section>
-</Layout>
+  {error ? (
+    <Card class="border-danger-600 bg-danger-50">
+      <p class="text-body text-danger-600 m-0">{error}</p>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">Start the API with <code>npm run dev:api</code></p>
+    </Card>
+  ) : (
+    <>
+      {categories.length > 0 && (
+        <section class="mb-8">
+          <h2 class="text-title-sm mb-3">Categories</h2>
+          <div class="flex flex-wrap gap-2">
+            {
+              categories.map((cat) => (
+                <Button
+                  href={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  {cat}
+                </Button>
+              ))
+            }
+          </div>
+        </section>
+      )}
 
-<style>
-  .hero {
-    margin-bottom: 2rem;
-  }
-  .eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    color: #64748b;
-    margin: 0 0 0.5rem;
-  }
-  h1 {
-    font-size: 2rem;
-    margin: 0 0 0.75rem;
-    color: #0f172a;
-  }
-  .lead {
-    max-width: 42rem;
-    line-height: 1.6;
-    color: #334155;
-  }
-  .meta {
-    margin-top: 1rem;
-    color: #475569;
-  }
-  .links {
-    margin-top: 0.75rem;
-  }
-  .links a {
-    color: #0e7490;
-    font-weight: 600;
-  }
-  .panel {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    padding: 1.25rem 1.5rem;
-  }
-  .panel h2 {
-    margin: 0 0 1rem;
-    font-size: 1.1rem;
-  }
-  dl {
-    display: grid;
-    grid-template-columns: 8rem 1fr;
-    gap: 0.5rem 1rem;
-    margin: 0;
-  }
-  dt {
-    color: #64748b;
-    font-size: 0.875rem;
-  }
-  dd {
-    margin: 0;
-    font-family: ui-monospace, monospace;
-    font-size: 0.875rem;
-  }
-  .ok {
-    color: #15803d;
-  }
-  .bad {
-    color: #b91c1c;
-  }
-  .error {
-    color: #b91c1c;
-  }
-</style>
+      <section>
+        <h2 class="text-title-sm mb-4">Featured products</h2>
+        <CatalogGrid items={featured} />
+        {items.length > featured.length && (
+          <div class="mt-6 text-center">
+            <Button href="/category/products" variant="ghost">
+              View all {items.length} products →
+            </Button>
+          </div>
+        )}
+      </section>
+    </>
+  )}
+</MarketplaceLayout>

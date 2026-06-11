@@ -1,0 +1,36 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+---
+
+<AdminLayout title="Pickup queue">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Pickup queue</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">Orders waiting for payment at the counter.</p>
+  </header>
+
+  <Card class="max-w-md mb-8">
+    <Input
+      id="admin-secret"
+      name="adminSecret"
+      type="password"
+      label="Staff secret"
+      hint="DEV_ADMIN_SECRET from API configuration"
+      autocomplete="off"
+    />
+    <Button type="button" variant="staff" id="load-pending" class="mt-4">
+      Load pending orders
+    </Button>
+    <p id="admin-load-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+
+  <div id="order-list" class="space-y-3" />
+</AdminLayout>
+
+<script>
+  import { setupAdminQueue } from "@/scripts/admin-queue";
+  import { API_BASE } from "@/lib/api";
+  setupAdminQueue(API_BASE);
+</script>

@@ -1,0 +1,26 @@
+---
+import Badge from "./Badge.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  badge?: string;
+}
+
+const { title, description, badge } = Astro.props;
+---
+
+<div class="flex flex-col items-center justify-center gap-4 py-12 px-4 text-center max-w-md mx-auto">
+  {badge && <Badge variant="brand">{badge}</Badge>}
+  <div class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M12 8v4M12 16h.01"></path>
+    </svg>
+  </div>
+  <h2 class="text-title text-neutral-900 m-0">{title}</h2>
+  {description && <p class="text-body text-neutral-500 m-0">{description}</p>}
+  <div class="flex flex-wrap gap-3 justify-center">
+    <slot />
+  </div>
+</div>

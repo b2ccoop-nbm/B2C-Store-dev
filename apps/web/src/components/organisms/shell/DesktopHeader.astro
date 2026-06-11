@@ -1,0 +1,87 @@
+---
+import PersonaSwitcher from "./PersonaSwitcher.astro";
+
+interface Props {
+  activePath: string;
+}
+
+const { activePath } = Astro.props;
+
+const shopLinks = [
+  { label: "Products", href: "/category/products" },
+  { label: "Services", href: "/category/services" },
+];
+---
+
+<header class="hidden md:block sticky top-0 z-30 border-b border-neutral-200 bg-neutral-0/95 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
+    <a href="/" class="text-title-sm font-bold text-brand-600 no-underline shrink-0">
+      B2CCoop
+    </a>
+
+    <nav class="flex items-center gap-1" aria-label="Shop categories">
+      {
+        shopLinks.map((link) => (
+          <a
+            href={link.href}
+            class:list={[
+              "touch-target inline-flex items-center px-3 rounded-lg text-body-sm font-medium no-underline",
+              activePath.startsWith("/category")
+                ? "text-brand-600 bg-brand-50"
+                : "text-neutral-900 hover:bg-neutral-50",
+            ]}
+          >
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex-1 max-w-md">
+      <a
+        href="/search"
+        class="flex min-h-touch items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 text-body-sm text-neutral-500 no-underline hover:border-brand-600"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        Search offerings
+      </a>
+    </div>
+
+    <nav class="flex items-center gap-1" aria-label="Account and inbox">
+      <a
+        href="/notifications"
+        class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-900 hover:bg-neutral-50"
+        aria-label="Notifications"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+        </svg>
+      </a>
+      <a
+        href="/messages"
+        class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-900 hover:bg-neutral-50"
+        aria-label="Messages"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </a>
+      <a
+        href="/cart"
+        class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-900 hover:bg-neutral-50"
+        aria-label="Cart"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="8" cy="21" r="1"></circle>
+          <circle cx="19" cy="21" r="1"></circle>
+          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+        </svg>
+      </a>
+      <PersonaSwitcher />
+    </nav>
+  </div>
+</header>

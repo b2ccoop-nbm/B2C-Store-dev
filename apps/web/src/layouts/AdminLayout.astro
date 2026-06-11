@@ -1,0 +1,31 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import DesktopHeader from "@/components/organisms/shell/DesktopHeader.astro";
+import MobileHeader from "@/components/organisms/shell/MobileHeader.astro";
+import TrustFooter from "@/components/organisms/shell/TrustFooter.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const activePath = Astro.url.pathname;
+---
+
+<BaseLayout title={title} description={description}>
+  <div
+    slot="banner"
+    class="border-b-2 border-accent-600 bg-accent-50 px-4 py-2 text-center text-body-sm"
+    role="status"
+  >
+    <span class="font-semibold text-accent-600">Admin / Officer</span>
+    <span class="text-neutral-500"> — cooperative operations</span>
+  </div>
+  <MobileHeader title={title} />
+  <DesktopHeader activePath={activePath} />
+  <main id="main-content" class="mx-auto min-h-[60vh] max-w-7xl px-4 py-6 md:px-6">
+    <slot />
+  </main>
+  <TrustFooter />
+</BaseLayout>

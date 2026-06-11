@@ -1,0 +1,55 @@
+---
+/** Delegates add-to-cart clicks and syncs cart badge count */
+---
+
+<script>
+  import { addToCart, readCart } from "@/lib/cart";
+
+  function cartCount(): number {
+    return readCart().reduce((sum, line) => sum + line.quantity, 0);
+  }
+
+  function updateBadge() {
+    const count = cartCount();
+    document.querySelectorAll("[data-cart-badge]").forEach((el) => {
+      const badge = el as HTMLElement;
+      if (count > 0) {
+        badge.textContent = String(count);
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    });
+  }
+
+  function bindAddToCart() {
+    document.querySelectorAll(".b2c-add-to-cart").forEach((btn) => {
+      const el = btn as HTMLElement;
+      if (el.dataset.bound === "1") return;
+      el.dataset.bound = "1";
+      el.addEventListener("click", () => {
+        const raw = el.dataset.cartItem;
+        if (!raw) return;
+        try {
+          const item = JSON.parse(raw);
+          addToCart(item);
+          updateBadge();
+          if (typeof window.b2cToast === "function") {
+            window.b2cToast("Added to cart");
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+    });
+  }
+
+  function init() {
+    bindAddToCart();
+    updateBadge();
+  }
+
+  init();
+  document.addEventListener("astro:page-load", init);
+  window.addEventListener("cart-updated", updateBadge);
+</script>

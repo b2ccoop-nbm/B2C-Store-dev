@@ -1,0 +1,37 @@
+---
+import PersonaSwitcher from "./PersonaSwitcher.astro";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "B2CCoop" } = Astro.props;
+---
+
+<header class="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-neutral-200 bg-neutral-0 px-4 py-2">
+  <a href="/" class="text-title-sm font-bold text-brand-600 no-underline truncate">
+    {title}
+  </a>
+  <div class="flex items-center gap-0.5">
+    <a
+      href="/notifications"
+      class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-900"
+      aria-label="Notifications"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+      </svg>
+    </a>
+    <a
+      href="/messages"
+      class="touch-target inline-flex items-center justify-center rounded-lg text-neutral-900"
+      aria-label="Messages"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </a>
+    <PersonaSwitcher />
+  </div>
+</header>

@@ -101,6 +101,8 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 | [docs/UX-ARCHITECTURE.md](./docs/UX-ARCHITECTURE.md) | Unified marketplace UX (personas, nav, wireframes) |
 | [docs/UI-BLUEPRINT.md](./docs/UI-BLUEPRINT.md) | MVP screen inventory, components, build roadmap |
 | [docs/FRONTEND-ARCHITECTURE.md](./docs/FRONTEND-ARCHITECTURE.md) | Design system, Astro structure, tokens, performance |
+| [docs/VALUE-ENGINE.md](./docs/VALUE-ENGINE.md) | P4: Booster Credits, Pending Credits, referrals (integration design only) |
+| [docs/LAUNCH-READINESS.md](./docs/LAUNCH-READINESS.md) | **MVP launch plan** — commerce audit, checklists, 48h/7d actions |
 
 B2CCoop is a **Community Commerce and Services Marketplace** — not product-only e-commerce. See [MARKETPLACE-DOMAIN.md](./MARKETPLACE-DOMAIN.md) and [PLATFORM-CORE-SERVICES.md](./PLATFORM-CORE-SERVICES.md).
 

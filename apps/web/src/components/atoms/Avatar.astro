@@ -1,0 +1,37 @@
+---
+import { cn } from "@/lib/cn";
+
+type Size = "sm" | "md" | "lg";
+
+interface Props {
+  src?: string;
+  alt: string;
+  initials?: string;
+  size?: Size;
+  class?: string;
+}
+
+const { src, alt, initials, size = "md", class: className } = Astro.props;
+
+const sizes: Record<Size, string> = {
+  sm: "h-8 w-8 text-caption",
+  md: "h-10 w-10 text-body-sm",
+  lg: "h-14 w-14 text-body",
+};
+
+const classes = cn(
+  "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 font-semibold text-neutral-900",
+  sizes[size],
+  className,
+);
+---
+
+<div class={classes} role="img" aria-label={alt}>
+  {
+    src ? (
+      <img src={src} alt={alt} class="h-full w-full object-cover" loading="lazy" />
+    ) : (
+      <span aria-hidden="true">{initials ?? alt.slice(0, 2).toUpperCase()}</span>
+    )
+  }
+</div>

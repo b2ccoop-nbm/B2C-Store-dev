@@ -1,0 +1,15 @@
+---
+import EmptyState from "@/components/atoms/EmptyState.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "This screen is a Sprint 1 route skeleton. Business logic ships in a later sprint.",
+} = Astro.props;
+---
+
+<EmptyState title={title} description={description} badge="Sprint 1" />

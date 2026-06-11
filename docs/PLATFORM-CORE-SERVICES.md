@@ -861,13 +861,15 @@ flowchart LR
 
 # Deliverable 8: Cooperative Benefits Engine
 
+> **Detailed design:** [VALUE-ENGINE.md](./VALUE-ENGINE.md) — **Approved, Platform Phase P4** (integration points only until prerequisites are met). Booster Credits, **Pending Credits**, referral rewards, ledger wallets, funding pools, share capital conversion. **No implementation** (migrations, APIs, UI, sprints) until Marketplace Core, Merchant Operations, and Membership Layer are operational.
+
 ## 1. Problem Statement
 
 Coop differentiation requires member pricing, patronage, rewards, merchant incentives, dividend eligibility signals, and accreditation — without embedding finance logic in every checkout path.
 
 ## 2. Architecture Decision
 
-**Benefits orchestration layer** that:
+**Benefits orchestration layer** (evolving into the **Cooperative Value Engine**) that:
 
 - Reads member context from WebApp (`Participant.id`)
 - Accrues **benefit events** in Marketplace DB
@@ -1229,7 +1231,7 @@ Does not redesign existing modules — **additive** rollout:
 | **P1** | API standards (§10), event outbox skeleton (§9) | Wrap confirm-pickup |
 | **P2** | Metadata framework (§2) for PRODUCT categories | Category admin |
 | **P3** | Workflow engine (§3) for ORDER | Replace status enums gradually |
-| **P4** | Commission (§4), Benefits expansion (§8) | Patronage as program |
+| **P4** | Commission (§4), **Cooperative Value Engine** ([VALUE-ENGINE.md](./VALUE-ENGINE.md)) | Booster ledger, pending/release, referrals — **after** Marketplace Core + Merchant Ops + Membership Layer |
 | **P5** | Geo (§5) + Scheduling (§6) | First SERVICE/TOUR |
 | **P6** | Content engine (§7) | Homepage blocks |
 | **P7** | INQUIRY/LEAD workflows | Loan/insurance |

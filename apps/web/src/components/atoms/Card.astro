@@ -1,0 +1,38 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  padding?: "sm" | "md" | "lg";
+  elevation?: 1 | 2 | 3;
+  class?: string;
+  as?: "div" | "article" | "section";
+}
+
+const {
+  padding = "md",
+  elevation = 1,
+  class: className,
+  as: Tag = "div",
+}: Props = Astro.props;
+
+const paddingMap: Record<NonNullable<Props["padding"]>, string> = {
+  sm: "p-3",
+  md: "p-4",
+  lg: "p-6",
+};
+
+const elevationMap: Record<NonNullable<Props["elevation"]>, string> = {
+  1: "elevation-1",
+  2: "elevation-2",
+  3: "elevation-3",
+};
+
+const paddingClass = paddingMap[padding];
+const elevationClass = elevationMap[elevation];
+
+const classes = cn(elevationClass, paddingClass, className);
+---
+
+<Tag class={classes}>
+  <slot />
+</Tag>

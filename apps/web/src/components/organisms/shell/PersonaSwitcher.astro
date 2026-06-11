@@ -1,0 +1,98 @@
+---
+import { PERSONAS } from "@/stores/persona";
+import Avatar from "@/components/atoms/Avatar.astro";
+---
+
+<div class="relative" data-persona-switcher>
+  <button
+    type="button"
+    id="persona-trigger"
+    class="touch-target inline-flex items-center gap-2 rounded-lg px-2 hover:bg-neutral-50"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    aria-controls="persona-menu"
+    aria-label="Switch persona"
+  >
+    <Avatar size="sm" alt="Account" initials="You" />
+    <span class="hidden md:inline text-body-sm font-medium text-neutral-900" id="persona-label">
+      Customer
+    </span>
+    <svg class="hidden md:block text-neutral-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="m6 9 6 6 6-6"></path>
+    </svg>
+  </button>
+  <ul
+    id="persona-menu"
+    role="listbox"
+    class="hidden absolute right-0 top-full z-50 mt-1 min-w-[14rem] rounded-lg border border-neutral-200 bg-neutral-0 py-1 elevation-3"
+    aria-label="Persona options"
+  >
+    {
+      PERSONAS.map((p) => (
+        <li role="option">
+          <button
+            type="button"
+            class="flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-neutral-50 min-h-touch"
+            data-persona-option={p.id}
+          >
+            <span class="text-body-sm font-semibold text-neutral-900">{p.label}</span>
+            <span class="text-caption text-neutral-500">{p.description}</span>
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<script>
+  import { $persona, getPersonaLabel, type Persona } from "@/stores/persona";
+
+  function bindPersonaSwitcher() {
+    const trigger = document.getElementById("persona-trigger");
+    const menu = document.getElementById("persona-menu");
+    const label = document.getElementById("persona-label");
+    if (!trigger || !menu) return;
+
+    const setLabel = (persona: Persona) => {
+      if (label) label.textContent = getPersonaLabel(persona);
+      menu.querySelectorAll("[data-persona-option]").forEach((btn) => {
+        const id = (btn as HTMLElement).dataset.personaOption;
+        btn.setAttribute("aria-selected", id === persona ? "true" : "false");
+      });
+    };
+
+    setLabel($persona.get());
+    $persona.subscribe(setLabel);
+
+    const close = () => {
+      menu.classList.add("hidden");
+      trigger.setAttribute("aria-expanded", "false");
+    };
+
+    trigger.addEventListener("click", () => {
+      const open = menu.classList.contains("hidden");
+      menu.classList.toggle("hidden", !open);
+      trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    menu.querySelectorAll("[data-persona-option]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = (btn as HTMLElement).dataset.personaOption as Persona;
+        $persona.set(id);
+        close();
+        window.dispatchEvent(new CustomEvent("persona-change", { detail: { persona: id } }));
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!trigger.contains(e.target as Node) && !menu.contains(e.target as Node)) close();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+  }
+
+  bindPersonaSwitcher();
+  document.addEventListener("astro:page-load", bindPersonaSwitcher);
+</script>

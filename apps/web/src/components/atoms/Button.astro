@@ -1,0 +1,61 @@
+---
+import { cn } from "@/lib/cn";
+
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "staff";
+type Size = "sm" | "md" | "lg";
+
+interface Props {
+  variant?: Variant;
+  size?: Size;
+  href?: string;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  fullWidth?: boolean;
+  id?: string;
+  class?: string;
+  ariaLabel?: string;
+}
+
+const {
+  variant = "primary",
+  size = "md",
+  href,
+  type = "button",
+  disabled = false,
+  fullWidth = false,
+  id,
+  class: className,
+  ariaLabel,
+} = Astro.props;
+
+const base =
+  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-50 disabled:pointer-events-none";
+
+const variants: Record<Variant, string> = {
+  primary: "bg-brand-600 text-white hover:bg-brand-700",
+  secondary: "bg-neutral-0 text-neutral-900 border border-neutral-200 hover:bg-neutral-50",
+  ghost: "bg-transparent text-neutral-900 hover:bg-neutral-200/60",
+  danger: "bg-danger-600 text-white hover:bg-danger-600/90",
+  staff: "bg-accent-600 text-white hover:bg-accent-600/90",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "min-h-9 px-3 text-body-sm",
+  md: "touch-target px-4 text-body",
+  lg: "min-h-12 px-6 text-body w-full md:w-auto",
+};
+
+const classes = cn(base, variants[variant], sizes[size], fullWidth && "w-full", className);
+---
+
+{
+  href ? (
+    <a href={href} id={id} class={classes} aria-label={ariaLabel}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} id={id} class={classes} disabled={disabled} aria-label={ariaLabel}>
+      <slot />
+    </button>
+  )
+}

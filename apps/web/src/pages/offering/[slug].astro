@@ -1,0 +1,67 @@
+---
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import Card from "@/components/atoms/Card.astro";
+import EmptyState from "@/components/atoms/EmptyState.astro";
+import { fetchCatalog, findProductBySlug } from "@/services/catalog";
+import { formatPhp } from "@/lib/format";
+
+const { slug } = Astro.params;
+let product = undefined;
+let error = "";
+
+try {
+  const catalog = await fetchCatalog();
+  product = slug ? findProductBySlug(catalog.items, slug) : undefined;
+} catch (e) {
+  error = e instanceof Error ? e.message : "Could not load product";
+}
+
+const cartPayload = product
+  ? JSON.stringify({
+      sku: product.sku,
+      name: product.name,
+      unitPrice: product.unitPrice,
+      patronagePerUnit: product.patronagePerUnit,
+      vendorCode: product.vendorCode,
+    })
+  : "";
+---
+
+<MarketplaceLayout title={product?.name ?? "Product"} hideBottomNav>
+  {
+    error ? (
+      <Card>
+        <p class="text-danger-600 m-0">{error}</p>
+      </Card>
+    ) : !product ? (
+      <EmptyState title="Product not found">
+        <Button href="/category/products" variant="primary">Browse products</Button>
+      </EmptyState>
+    ) : (
+      <div class="max-w-lg">
+        <Badge variant="coop" class="mb-3">Coop product</Badge>
+        <h1 class="text-display m-0 mb-2">{product.name}</h1>
+        <p class="text-body-sm text-neutral-500 m-0 mb-4">{product.sku} · {product.vendorCode}</p>
+        <p class="text-price text-brand-600 m-0 mb-6">{formatPhp(product.unitPrice)}</p>
+        <p class="text-body text-neutral-500 mb-6">
+          Pay when you pick up your order at the coop counter.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="primary"
+            class="b2c-add-to-cart"
+            data-cart-item={cartPayload}
+          >
+            Add to cart
+          </Button>
+          <Button href="/cart" variant="secondary">
+            View cart
+          </Button>
+        </div>
+      </div>
+    )
+  }
+</MarketplaceLayout>

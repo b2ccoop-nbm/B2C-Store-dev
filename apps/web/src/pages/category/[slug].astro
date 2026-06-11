@@ -1,0 +1,41 @@
+---
+import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
+import CatalogGrid from "@/components/molecules/CatalogGrid.astro";
+import Card from "@/components/atoms/Card.astro";
+import { fetchCatalog, filterByCategorySlug } from "@/services/catalog";
+
+const { slug } = Astro.params;
+const categorySlug = slug ?? "products";
+
+let items: Awaited<ReturnType<typeof fetchCatalog>>["items"] = [];
+let error = "";
+
+try {
+  const catalog = await fetchCatalog();
+  items = filterByCategorySlug(catalog.items, categorySlug);
+} catch (e) {
+  error = e instanceof Error ? e.message : "Could not load catalog";
+}
+
+const title =
+  categorySlug === "products"
+    ? "All products"
+    : categorySlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+---
+
+<MarketplaceLayout title={title}>
+  <header class="mb-6">
+    <h1 class="text-display m-0 mb-1">{title}</h1>
+    <p class="text-body-sm text-neutral-500 m-0">{items.length} products</p>
+  </header>
+
+  {
+    error ? (
+      <Card>
+        <p class="text-danger-600 m-0">{error}</p>
+      </Card>
+    ) : (
+      <CatalogGrid items={items} emptyTitle={`No products in ${title}`} />
+    )
+  }
+</MarketplaceLayout>

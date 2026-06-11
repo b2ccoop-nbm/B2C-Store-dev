@@ -1,0 +1,16 @@
+---
+interface Props {
+  label?: string;
+}
+
+const { label = "Loading" } = Astro.props;
+---
+
+<div class="flex flex-col items-center justify-center gap-4 py-16" role="status" aria-live="polite">
+  <div
+    class="h-10 w-10 rounded-full border-2 border-neutral-200 border-t-brand-600 animate-spin"
+    aria-hidden="true"
+  >
+  </div>
+  <p class="text-body-sm text-neutral-500 m-0">{label}…</p>
+</div>

@@ -1,0 +1,8 @@
+<script>
+  import { setupCartPage } from "@/scripts/cart-page";
+
+  setupCartPage(
+    import.meta.env.PUBLIC_API_URL ?? "http://localhost:8787",
+    import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "",
+  );
+</script>
