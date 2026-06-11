@@ -15,6 +15,13 @@
       "when": 1780994400000,
       "tag": "0001_pending_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780998000000,
+      "tag": "0002_merchant_layer",
+      "breakpoints": true
     }
   ]
 }

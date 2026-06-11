@@ -1,0 +1,75 @@
+---
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+import Select from "@/components/atoms/Select.astro";
+import Textarea from "@/components/atoms/Textarea.astro";
+---
+
+<DashboardLayout title="Apply to sell" section="sell">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Seller application</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Join the B2CCoop marketplace. Officers review applications before you can publish listings.
+    </p>
+  </header>
+
+  <Card class="max-w-xl mb-8">
+    <h2 class="text-title m-0 mb-4">Check application status</h2>
+    <Input id="check-email" name="checkEmail" type="email" label="Your email" autocomplete="email" />
+    <Button type="button" variant="secondary" id="check-application" class="mt-4">Check status</Button>
+    <div id="application-status" class="hidden mt-4 p-4 rounded-lg bg-neutral-50 border border-neutral-100" />
+  </Card>
+
+  <Card class="max-w-xl mb-8">
+    <h2 class="text-title m-0 mb-4">Merchant access</h2>
+    <p class="text-body-sm text-neutral-500 m-0 mb-4">
+      After approval, enter your vendor code and staff secret to manage listings and orders on this device.
+    </p>
+    <Input id="merchant-email" name="merchantEmail" type="email" label="Contact email" autocomplete="email" />
+    <Input id="merchant-vendor" name="merchantVendor" type="text" label="Vendor code" placeholder="B2C-YOUR-STORE" class="mt-4" />
+    <Input
+      id="merchant-secret"
+      name="merchantSecret"
+      type="password"
+      label="Staff secret"
+      hint="Same DEV_ADMIN_SECRET used for pickup queue"
+      autocomplete="off"
+      class="mt-4"
+    />
+    <Button type="button" variant="staff" id="save-merchant-session" class="mt-4">Save merchant session</Button>
+    <p id="merchant-session-msg" class="hidden text-body-sm mt-2 m-0" role="status" />
+  </Card>
+
+  <Card class="max-w-xl">
+    <h2 class="text-title m-0 mb-4">New application</h2>
+    <form id="seller-application-form" class="flex flex-col gap-4">
+      <Input id="applicantEmail" name="applicantEmail" type="email" label="Business email" required autocomplete="email" />
+      <Input id="businessName" name="businessName" type="text" label="Business name" required />
+      <Select
+        id="businessType"
+        name="businessType"
+        label="What do you sell?"
+        required
+        options={[
+          { value: "product", label: "Products (goods)" },
+          { value: "food", label: "Food & beverages" },
+          { value: "farm", label: "Farm & produce" },
+          { value: "service", label: "Services (coming soon)" },
+        ]}
+      />
+      <Input id="contactPhone" name="contactPhone" type="tel" label="Contact phone" inputMode="tel" />
+      <Textarea id="description" name="description" label="Tell us about your business" rows={4} hint="What you sell, where you're based, coop membership if any." />
+      <Button type="submit" variant="primary">Submit application</Button>
+      <p id="application-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
+    </form>
+  </Card>
+</DashboardLayout>
+
+<script>
+  import { setupMerchantCredentials, setupSellerApplicationForm } from "@/scripts/seller-application";
+  import { API_BASE } from "@/lib/api";
+  setupSellerApplicationForm(API_BASE);
+  setupMerchantCredentials(API_BASE);
+</script>

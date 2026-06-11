@@ -5,8 +5,10 @@
 
 export type SeedVendor = {
   code: string;
+  slug: string;
   name: string;
   email: string;
+  description?: string;
 };
 
 export type SeedProduct = {
@@ -24,13 +26,17 @@ export type SeedProduct = {
 export const SEED_VENDORS: SeedVendor[] = [
   {
     code: "B2C-DEMO",
+    slug: "b2c-demo-groceries",
     name: "B2C Demo Groceries",
     email: "groceries@b2ccoop.test",
+    description: "Everyday staples and pantry goods from our demo grocer.",
   },
   {
     code: "B2C-FARM",
+    slug: "b2c-farm-fresh",
     name: "B2C Farm Fresh Co-op",
     email: "farm@b2ccoop.test",
+    description: "Seasonal produce and farm goods from member growers.",
   },
 ];
 

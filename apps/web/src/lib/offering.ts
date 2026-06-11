@@ -30,3 +30,8 @@ export function addToCartLabel(name: string): string {
 export function isCoopVendor(vendorCode: string): boolean {
   return vendorCode.startsWith("B2C-");
 }
+
+export function storefrontHref(vendorCode: string, vendorSlug?: string): string {
+  if (vendorSlug) return `/store/${vendorSlug}`;
+  return `/store/${vendorCode.toLowerCase()}`;
+}

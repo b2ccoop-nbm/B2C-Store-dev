@@ -82,7 +82,7 @@ const addLabel = product ? addToCartLabel(product.name) : "Add to cart";
             </p>
           </Card>
 
-          <SellerMiniCard vendorCode={product.vendorCode} class="mb-6" />
+          <SellerMiniCard vendorCode={product.vendorCode} vendorSlug={product.vendorSlug} class="mb-6" />
 
           <div class="hidden md:flex flex-wrap gap-3">
             <Button

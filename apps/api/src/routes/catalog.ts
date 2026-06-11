@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { createDb } from "../db/client";
 import { products, vendors } from "../db/schema";
@@ -15,6 +15,7 @@ export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
     const rows = await db
       .select({
         vendorCode: vendors.code,
+        vendorSlug: vendors.slug,
         sku: products.sku,
         name: products.name,
         category: products.category,
@@ -24,11 +25,12 @@ export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
       })
       .from(products)
       .innerJoin(vendors, eq(products.vendorId, vendors.id))
-      .where(eq(products.isActive, true));
+      .where(and(eq(products.isActive, true), eq(products.listingStatus, "ACTIVE")));
 
     const items = rows
       .map((row) => ({
         vendorCode: row.vendorCode,
+        vendorSlug: row.vendorSlug,
         sku: row.sku,
         name: row.name,
         category: row.category,

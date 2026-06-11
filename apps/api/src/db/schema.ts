@@ -27,12 +27,43 @@ export const patronageAccrualStatusEnum = pgEnum("patronage_accrual_status", [
   "PAID_OUT",
 ]);
 
+export const sellerApplicationStatusEnum = pgEnum("seller_application_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
+export const listingStatusEnum = pgEnum("listing_status", [
+  "DRAFT",
+  "PENDING_REVIEW",
+  "ACTIVE",
+  "REJECTED",
+]);
+
 export const vendors = pgTable("vendors", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: varchar("code", { length: 64 }).notNull().unique(),
+  slug: varchar("slug", { length: 128 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
+  ownerEmail: varchar("owner_email", { length: 255 }),
+  description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sellerApplications = pgTable("seller_applications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicantEmail: varchar("applicant_email", { length: 255 }).notNull(),
+  businessName: varchar("business_name", { length: 255 }).notNull(),
+  businessType: varchar("business_type", { length: 64 }).notNull().default("product"),
+  contactPhone: varchar("contact_phone", { length: 32 }),
+  description: text("description"),
+  proposedVendorCode: varchar("proposed_vendor_code", { length: 64 }),
+  status: sellerApplicationStatusEnum("status").notNull().default("PENDING"),
+  vendorId: uuid("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -53,6 +84,7 @@ export const products = pgTable(
     cogsPerUnit: numeric("cogs_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     patronagePerUnit: numeric("patronage_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     currency: varchar("currency", { length: 3 }).notNull().default("PHP"),
+    listingStatus: listingStatusEnum("listing_status").notNull().default("ACTIVE"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -107,6 +139,7 @@ export const patronageAccruals = pgTable("patronage_accruals", {
 });
 
 export type Vendor = typeof vendors.$inferSelect;
+export type SellerApplication = typeof sellerApplications.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderLine = typeof orderLines.$inferSelect;

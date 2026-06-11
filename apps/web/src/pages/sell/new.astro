@@ -1,8 +1,75 @@
 ---
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+import Select from "@/components/atoms/Select.astro";
+
+const categories = [
+  "Groceries",
+  "Produce",
+  "Dairy",
+  "Bakery",
+  "Household",
+  "Health",
+  "General",
+];
 ---
 
 <DashboardLayout title="New listing" section="sell">
-  <RouteStub title="Listing wizard" description="Create a new offering in Sprint 6." />
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-display m-0">Listing wizard</h1>
+      <p id="wizard-step-label" class="text-body-sm text-neutral-500 mt-2 m-0">Step 1 of 3</p>
+    </div>
+    <Button href="/sell/apply" variant="ghost" size="sm">Set merchant credentials</Button>
+  </header>
+
+  <Card class="max-w-xl">
+    <div id="wizard-step-1" class="flex flex-col gap-4">
+      <p class="text-body-sm text-neutral-500 m-0">What are you listing? (Product only for MVP)</p>
+      <Input id="listing-name" name="name" type="text" label="Product name" required placeholder="Organic brown rice 5kg" />
+      <Input id="listing-sku" name="sku" type="text" label="SKU" required hint="Unique code for your catalog, e.g. RICE-5KG" />
+      <Select
+        id="listing-category"
+        name="category"
+        label="Category"
+        required
+        options={categories.map((c) => ({ value: c, label: c }))}
+      />
+    </div>
+
+    <div id="wizard-step-2" class="hidden flex flex-col gap-4">
+      <Input id="listing-price" name="unitPrice" type="text" label="Price (PHP)" required inputMode="decimal" placeholder="199.00" />
+      <Input
+        id="listing-patronage"
+        name="patronagePerUnit"
+        type="text"
+        label="Patronage per unit (PHP)"
+        inputMode="decimal"
+        value="0"
+        hint="Optional member patronage accrual per item sold"
+      />
+    </div>
+
+    <div id="wizard-step-3" class="hidden">
+      <h2 class="text-title m-0 mb-4">Review & submit</h2>
+      <div id="wizard-review" />
+    </div>
+
+    <p id="wizard-error" class="hidden text-body-sm text-danger-600 mt-4 m-0" role="alert" />
+    <p id="wizard-success" class="hidden text-body-sm text-success-600 mt-4 m-0" role="status" />
+
+    <div class="flex flex-wrap gap-3 mt-6">
+      <Button type="button" variant="secondary" id="wizard-back" class="hidden">Back</Button>
+      <Button type="button" variant="primary" id="wizard-next">Continue</Button>
+      <Button type="button" variant="primary" id="wizard-submit" class="hidden">Submit for review</Button>
+    </div>
+  </Card>
 </DashboardLayout>
+
+<script>
+  import { setupListingWizard } from "@/scripts/listing-wizard";
+  import { API_BASE } from "@/lib/api";
+  setupListingWizard(API_BASE);
+</script>

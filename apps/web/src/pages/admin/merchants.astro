@@ -1,0 +1,51 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+---
+
+<AdminLayout title="Merchant approval">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Merchants & listings</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">Approve seller applications and new product listings.</p>
+  </header>
+
+  <Card class="max-w-md mb-8">
+    <Input
+      id="admin-secret"
+      name="adminSecret"
+      type="password"
+      label="Staff secret"
+      hint="DEV_ADMIN_SECRET from API configuration"
+      autocomplete="off"
+    />
+    <p id="admin-merchants-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+
+  <section class="mb-10 max-w-2xl">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+      <h2 class="text-title m-0">Seller applications</h2>
+      <Button type="button" variant="staff" id="load-applications">Load pending</Button>
+    </div>
+    <div id="applications-list" />
+  </section>
+
+  <section class="max-w-2xl">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+      <h2 class="text-title m-0">Listings awaiting approval</h2>
+      <Button type="button" variant="secondary" id="load-pending-listings">Load pending</Button>
+    </div>
+    <div id="pending-listings-panel" />
+  </section>
+
+  <p class="text-body-sm mt-8 m-0">
+    <a href="/admin" class="text-brand-600 font-semibold">← Pickup queue</a>
+  </p>
+</AdminLayout>
+
+<script>
+  import { setupAdminMerchants } from "@/scripts/admin-merchants";
+  import { API_BASE } from "@/lib/api";
+  setupAdminMerchants(API_BASE);
+</script>

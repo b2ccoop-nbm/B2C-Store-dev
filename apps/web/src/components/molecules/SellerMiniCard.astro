@@ -3,13 +3,17 @@ import Card from "@/components/atoms/Card.astro";
 import TrustBadge from "@/components/molecules/TrustBadge.astro";
 import { isCoopVendor } from "@/lib/offering";
 
+import { storefrontHref } from "@/lib/offering";
+
 interface Props {
   vendorCode: string;
+  vendorSlug?: string;
   vendorName?: string;
   class?: string;
 }
 
-const { vendorCode, vendorName, class: className } = Astro.props;
+const { vendorCode, vendorSlug, vendorName, class: className } = Astro.props;
+const storeHref = storefrontHref(vendorCode, vendorSlug);
 const displayName = vendorName ?? vendorCode;
 const trustType = isCoopVendor(vendorCode) ? "coop-official" : "merchant-verified";
 ---
@@ -17,7 +21,9 @@ const trustType = isCoopVendor(vendorCode) ? "coop-official" : "merchant-verifie
 <Card padding="sm" class:list={["bg-neutral-50", className]}>
   <p class="text-caption text-neutral-500 m-0 mb-2">Sold by</p>
   <div class="flex flex-wrap items-center gap-2">
-    <span class="text-body font-semibold text-neutral-900">{displayName}</span>
+    <a href={storeHref} class="text-body font-semibold text-neutral-900 no-underline hover:text-brand-600">
+      {displayName}
+    </a>
     <TrustBadge type={trustType} />
   </div>
 </Card>

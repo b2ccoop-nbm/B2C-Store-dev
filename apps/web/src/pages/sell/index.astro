@@ -1,8 +1,42 @@
 ---
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
 ---
 
 <DashboardLayout title="Sell" section="sell">
-  <RouteStub title="Merchant dashboard" description="Overview, KPIs, and action queue ship in Sprint 4." />
+  <header class="mb-6">
+    <h1 class="text-display m-0">Merchant dashboard</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">Manage your storefront, listings, and order queue.</p>
+  </header>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+    <Card>
+      <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Start here</p>
+      <h2 class="text-title mt-2 m-0">Become a seller</h2>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">Submit an application or check approval status.</p>
+      <Button href="/sell/apply" variant="secondary" class="mt-4">Seller application</Button>
+    </Card>
+    <Card>
+      <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Catalog</p>
+      <h2 class="text-title mt-2 m-0">List a product</h2>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">3-step wizard — details, price, review.</p>
+      <Button href="/sell/new" variant="primary" class="mt-4">New listing</Button>
+    </Card>
+    <Card>
+      <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Fulfillment</p>
+      <h2 class="text-title mt-2 m-0">Order queue</h2>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">Confirm pay-at-pickup orders for your store.</p>
+      <Button href="/sell/activity" variant="staff" class="mt-4">Open queue</Button>
+    </Card>
+  </div>
+
+  <Card>
+    <h2 class="text-title m-0">Quick links</h2>
+    <ul class="mt-4 space-y-2 text-body-sm m-0 pl-5">
+      <li><a href="/sell/listings" class="text-brand-600 font-semibold">Your listings</a> — drafts and published products</li>
+      <li><a href="/sell/apply" class="text-brand-600 font-semibold">Merchant credentials</a> — vendor code + staff secret</li>
+      <li><a href="/store/b2c-farm-fresh" class="text-brand-600 font-semibold">Example storefront</a> — B2C Farm Fresh Co-op</li>
+    </ul>
+  </Card>
 </DashboardLayout>

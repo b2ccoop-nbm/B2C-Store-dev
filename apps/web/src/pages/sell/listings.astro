@@ -1,8 +1,30 @@
 ---
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
 ---
 
-<DashboardLayout title="Listings" section="sell">
-  <RouteStub title="Your listings" description="Manage offerings in Sprint 4+." />
+<DashboardLayout title="Your listings" section="sell">
+  <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-display m-0">Your listings</h1>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">Drafts, pending review, and live products.</p>
+    </div>
+    <Button href="/sell/new" variant="primary">New listing</Button>
+  </header>
+
+  <Card>
+    <Button type="button" variant="secondary" id="load-listings">Load listings</Button>
+    <p class="text-caption text-neutral-500 mt-2 m-0">
+      Requires merchant session — <a href="/sell/apply" class="text-brand-600">set credentials</a>
+    </p>
+    <p id="listings-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+    <div id="listings-table" class="mt-6" />
+  </Card>
 </DashboardLayout>
+
+<script>
+  import { setupMerchantListings } from "@/scripts/merchant-listings";
+  import { API_BASE } from "@/lib/api";
+  setupMerchantListings(API_BASE);
+</script>

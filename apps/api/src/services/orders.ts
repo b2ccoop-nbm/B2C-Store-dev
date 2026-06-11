@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { orderLines, orders } from "../db/schema";
 import { postMarketplaceSale } from "../integrations/accounting-client";
@@ -213,18 +213,23 @@ export async function fulfillOnlinePayment(
   return { ...result, skipped: false as const };
 }
 
-export async function listPendingPickupOrders(db: StoreDatabase) {
+export async function listPendingPickupOrders(db: StoreDatabase, vendorCode?: string) {
   const rows = await db
     .select({
       orderId: orders.id,
       externalId: orders.externalId,
       guestEmail: orders.guestEmail,
+      vendorCode: orders.vendorCode,
       status: orders.status,
       grossAmount: orders.grossAmount,
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(eq(orders.status, "PENDING_PICKUP"));
+    .where(
+      vendorCode
+        ? and(eq(orders.status, "PENDING_PICKUP"), eq(orders.vendorCode, vendorCode))
+        : eq(orders.status, "PENDING_PICKUP"),
+    );
 
   return rows
     .map((r) => ({

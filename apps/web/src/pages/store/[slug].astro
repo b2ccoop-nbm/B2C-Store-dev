@@ -1,10 +1,42 @@
 ---
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import CatalogGrid from "@/components/molecules/CatalogGrid.astro";
+import Card from "@/components/atoms/Card.astro";
+import StorefrontHeader from "@/components/molecules/StorefrontHeader.astro";
+import { fetchStorefront } from "@/services/merchant";
 
 const { slug } = Astro.params;
+let storefront: Awaited<ReturnType<typeof fetchStorefront>> | null = null;
+let error = "";
+
+if (!slug) {
+  error = "Store not specified";
+} else {
+  try {
+    storefront = await fetchStorefront(slug);
+  } catch (e) {
+    error = e instanceof Error ? e.message : "Could not load store";
+  }
+}
 ---
 
-<MarketplaceLayout title="Storefront">
-  <RouteStub title="Merchant storefront" description={`Storefront for “${slug}”. Ships in Sprint 5.`} />
+<MarketplaceLayout title={storefront?.name ?? "Storefront"} description={storefront?.description ?? undefined}>
+  {error ? (
+    <Card class="border-danger-600 bg-danger-50 max-w-lg">
+      <h1 class="text-title m-0">Store not found</h1>
+      <p class="text-body text-danger-600 mt-2 m-0">{error}</p>
+      <p class="text-body-sm mt-4 m-0"><a href="/" class="text-brand-600 font-semibold">Back to marketplace →</a></p>
+    </Card>
+  ) : storefront ? (
+    <>
+      <StorefrontHeader
+        name={storefront.name}
+        vendorCode={storefront.vendorCode}
+        description={storefront.description}
+        listingCount={storefront.listingCount}
+      />
+      <h2 class="text-title mb-4">Products</h2>
+      <CatalogGrid items={storefront.items} emptyTitle="No products listed yet" />
+    </>
+  ) : null}
 </MarketplaceLayout>

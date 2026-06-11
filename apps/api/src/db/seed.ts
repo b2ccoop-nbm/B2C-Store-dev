@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { createDb } from "./client";
+import { slugify } from "../lib/slug";
 import { orderLines, orders, patronageAccruals, products, vendors } from "./schema";
 import { DEV_SAMPLE_ORDERS, DEV_SHOPPERS, DEV_STAFF } from "./seed-dev-fixtures";
 import { SEED_PRODUCTS, SEED_VENDORS } from "./seed-data";
@@ -17,11 +18,25 @@ export async function seedCatalog(db: ReturnType<typeof createDb>["db"]) {
     if (!vendor) {
       const inserted = await db
         .insert(vendors)
-        .values({ code: v.code, name: v.name, email: v.email })
+        .values({
+          code: v.code,
+          slug: v.slug ?? slugify(v.code),
+          name: v.name,
+          email: v.email,
+          description: v.description ?? null,
+        })
         .returning();
       vendor = inserted[0];
       console.log(`Created vendor ${vendor.code}`);
     } else {
+      await db
+        .update(vendors)
+        .set({
+          slug: vendor.slug ?? v.slug ?? slugify(v.code),
+          description: vendor.description ?? v.description ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(vendors.id, vendor.id));
       console.log(`Vendor ${vendor.code} already exists`);
     }
     vendorByCode.set(v.code, { id: vendor.id, code: vendor.code });

@@ -1,8 +1,32 @@
 ---
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
 ---
 
 <DashboardLayout title="Merchant activity" section="sell">
-  <RouteStub title="Merchant activity" description="Fulfillment queue and transactions ship in Sprint 4." />
+  <header class="mb-6">
+    <h1 class="text-display m-0">Order queue</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Pending pay-at-pickup orders for <strong id="merchant-vendor-label" class="text-merchant-600">your store</strong>.
+    </p>
+  </header>
+
+  <Card class="max-w-2xl mb-6">
+    <p class="text-body-sm text-neutral-500 m-0 mb-4">
+      Uses your saved vendor code and staff secret from
+      <a href="/sell/apply" class="text-brand-600 font-semibold">Seller application</a>.
+      Officers can also use the <a href="/admin" class="text-brand-600 font-semibold">global pickup queue</a>.
+    </p>
+    <Button type="button" variant="staff" id="load-merchant-orders">Load my orders</Button>
+    <p id="merchant-load-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+
+  <div id="merchant-order-list" class="space-y-3 max-w-2xl" />
 </DashboardLayout>
+
+<script>
+  import { setupMerchantQueue } from "@/scripts/merchant-queue";
+  import { API_BASE } from "@/lib/api";
+  setupMerchantQueue(API_BASE);
+</script>
