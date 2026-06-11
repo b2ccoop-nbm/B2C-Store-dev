@@ -1,4 +1,5 @@
 ---
+import CartIconLink from "@/components/atoms/CartIconLink.astro";
 import PersonaSwitcher from "./PersonaSwitcher.astro";
 
 interface Props {
@@ -8,8 +9,8 @@ interface Props {
 const { title = "B2CCoop" } = Astro.props;
 ---
 
-<header class="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-neutral-200 bg-neutral-0 px-4 py-2">
-  <a href="/" class="text-title-sm font-bold text-brand-600 no-underline truncate">
+<header class="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-ecosystem-600/15 bg-neutral-0 px-4 py-2">
+  <a href="/" class="text-title-sm font-bold text-ecosystem-600 no-underline truncate">
     {title}
   </a>
   <div class="flex items-center gap-0.5">
@@ -32,6 +33,7 @@ const { title = "B2CCoop" } = Astro.props;
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>
     </a>
+    <CartIconLink class="touch-target rounded-lg" />
     <PersonaSwitcher />
   </div>
 </header>

@@ -4,6 +4,7 @@
 
 <script>
   import { addToCart, readCart } from "@/lib/cart";
+  import { STORAGE_KEYS } from "@/lib/constants";
 
   function cartCount(): number {
     return readCart().reduce((sum, line) => sum + line.quantity, 0);
@@ -11,6 +12,8 @@
 
   function updateBadge() {
     const count = cartCount();
+    const cartLabel = count === 0 ? "Cart" : count === 1 ? "Cart, 1 item" : `Cart, ${count} items`;
+
     document.querySelectorAll("[data-cart-badge]").forEach((el) => {
       const badge = el as HTMLElement;
       if (count > 0) {
@@ -20,35 +23,47 @@
         badge.classList.add("hidden");
       }
     });
-  }
 
-  function bindAddToCart() {
-    document.querySelectorAll(".b2c-add-to-cart").forEach((btn) => {
-      const el = btn as HTMLElement;
-      if (el.dataset.bound === "1") return;
-      el.dataset.bound = "1";
-      el.addEventListener("click", () => {
-        const raw = el.dataset.cartItem;
-        if (!raw) return;
-        try {
-          const item = JSON.parse(raw);
-          addToCart(item);
-          updateBadge();
-          if (typeof window.b2cToast === "function") {
-            window.b2cToast("Added to cart");
-          }
-        } catch {
-          /* ignore */
-        }
-      });
+    document.querySelectorAll("[data-cart-link]").forEach((el) => {
+      el.setAttribute("aria-label", cartLabel);
     });
   }
 
+  function handleAddToCart(el: HTMLElement) {
+    const raw = el.dataset.cartItem;
+    if (!raw) return;
+    try {
+      const item = JSON.parse(raw);
+      addToCart(item);
+      updateBadge();
+      if (typeof window.b2cToast === "function") {
+        const firstAdd = localStorage.getItem(STORAGE_KEYS.firstCartAdd) !== "1";
+        if (firstAdd) {
+          localStorage.setItem(STORAGE_KEYS.firstCartAdd, "1");
+          window.b2cToast("Added — no account needed to checkout", "success");
+        } else {
+          window.b2cToast("Added to cart", "success");
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onDocumentClick(event: MouseEvent) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const btn = target.closest<HTMLElement>(".b2c-add-to-cart");
+    if (!btn) return;
+    event.preventDefault();
+    handleAddToCart(btn);
+  }
+
   function init() {
-    bindAddToCart();
     updateBadge();
   }
 
+  document.addEventListener("click", onDocumentClick);
   init();
   document.addEventListener("astro:page-load", init);
   window.addEventListener("cart-updated", updateBadge);

@@ -22,7 +22,7 @@ export function setupOrderConfirm(apiBase: string, orderId: string): void {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Confirm failed");
       if (msg) {
-        msg.textContent = `Success — status ${data.status}`;
+        msg.textContent = "Payment confirmed — receipt will update shortly.";
         msg.className = "text-body-sm mt-3 m-0 text-success-600";
         msg.classList.remove("hidden");
       }

@@ -855,15 +855,15 @@ Shared
 
 ## Design tokens
 
-### Color (cooperative trust)
+### Color (B2CCoop ecosystem — not a separate store identity)
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--color-brand` | `#0e7490` | Primary — teal (existing store) |
-| `--color-brand-dark` | `#0c6378` | Hover |
-| `--color-accent` | `#b45309` | Staff / action amber |
-| `--color-coop` | `#047857` | Coop badge, patronage |
-| `--color-member` | `#0369a1` | Member pricing |
+| `--color-ecosystem` | `#004aad` | Royal blue — shell, logo (sparingly) |
+| `--color-brand` / commerce | `#0e7490` | Teal — storefront actions, cart, nav |
+| `--color-coop` / member | `#047857` | Green — membership & cooperative benefits |
+| `--color-merchant` / accent | `#ea580c` | Orange — merchant sell tools & staff |
+| `--color-brand-dark` | `#0c6378` | Commerce hover |
 | `--color-surface` | `#f8fafc` | Page background |
 | `--color-danger` | `#b91c1c` | Errors |
 | `--color-success` | `#15803d` | Complete |

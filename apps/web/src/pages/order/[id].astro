@@ -60,7 +60,7 @@ const showStaffConfirm =
                 : order.status === "POSTED_TO_LEDGER"
                   ? "Payment recorded. Thank you for shopping with your coop."
                   : order.status === "FAILED"
-                    ? "Payment was received but ledger posting failed — staff can retry below."
+                    ? "Payment was received but confirmation could not be completed — staff can retry below."
                     : "Order status updates will appear here."
             }
           </p>
@@ -98,7 +98,7 @@ const showStaffConfirm =
             <div id="staff-confirm" data-order-id={order.orderId} data-api-base={API_BASE}>
             <Card class="border-accent-600 bg-accent-50">
               <h2 class="text-title-sm m-0 mb-2">
-                {order.status === "FAILED" ? "Staff — retry ledger" : "Staff — confirm pickup"}
+                {order.status === "FAILED" ? "Counter — retry payment" : "Counter — confirm payment"}
               </h2>
               {order.accountingError && (
                 <p class="text-body-sm text-danger-600 m-0 mb-3">Last error: {order.accountingError}</p>
@@ -113,7 +113,7 @@ const showStaffConfirm =
                 />
               </label>
               <Button type="button" variant="staff" id="confirm-pickup">
-                {order.status === "FAILED" ? "Retry post to ledger" : "Mark paid & post ledger"}
+                {order.status === "FAILED" ? "Retry confirm payment" : "Confirm payment"}
               </Button>
               <p id="admin-msg" class="hidden text-body-sm mt-3 m-0" role="status" />
             </Card>

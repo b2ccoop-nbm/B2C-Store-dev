@@ -1,8 +1,88 @@
 ---
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import SearchField from "@/components/molecules/SearchField.astro";
+import CategoryChip from "@/components/molecules/CategoryChip.astro";
+import OfferingCard from "@/components/molecules/OfferingCard.astro";
+import Card from "@/components/atoms/Card.astro";
+import { fetchCatalog } from "@/services/catalog";
+import { filterCatalog } from "@/lib/search";
+import { CATEGORY_SHORTCUTS } from "@/lib/category-meta";
+
+const q = Astro.url.searchParams.get("q")?.trim() ?? "";
+let allItems: Awaited<ReturnType<typeof fetchCatalog>>["items"] = [];
+let error = "";
+
+try {
+  const catalog = await fetchCatalog();
+  allItems = catalog.items;
+} catch (e) {
+  error = e instanceof Error ? e.message : "Could not load catalog";
+}
+
+const items = q ? filterCatalog(allItems, q) : [];
 ---
 
-<MarketplaceLayout title="Search">
-  <RouteStub title="Search" description="Global search and filters ship in Sprint 2." />
+<MarketplaceLayout title={q ? `Search: ${q}` : "Search"} mobileHeaderTitle="Search">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Search</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">Find products from your cooperative store.</p>
+  </header>
+
+  <SearchField value={q} autofocus class="mb-6" />
+
+  {
+    !q && (
+      <section class="mb-8" aria-label="Popular shortcuts">
+        <p class="text-caption font-semibold uppercase tracking-wide text-neutral-500 mb-3">Popular</p>
+        <div class="flex flex-wrap gap-2">
+          <CategoryChip href="/search?q=rice" label="Rice" icon="🍚" />
+          <CategoryChip href="/search?q=milk" label="Milk" icon="🥛" />
+          <CategoryChip href="/category/groceries" label="Groceries" icon="🛒" />
+        </div>
+        <p class="text-caption font-semibold uppercase tracking-wide text-neutral-500 mt-6 mb-3">Categories</p>
+        <div class="flex flex-wrap gap-2">
+          {
+            CATEGORY_SHORTCUTS.map((chip) => (
+              <CategoryChip href={`/category/${chip.slug}`} label={chip.label} icon={chip.icon} />
+            ))
+          }
+        </div>
+      </section>
+    )
+  }
+
+  {
+    error ? (
+      <Card class="border-danger-600 bg-danger-50">
+        <p class="text-body text-danger-600 m-0">{error}</p>
+      </Card>
+    ) : q ? (
+      <section>
+        <p class="text-body-sm text-neutral-500 mb-4 m-0">
+          {items.length} {items.length === 1 ? "result" : "results"} for “{q}”
+        </p>
+        {
+          items.length === 0 ? (
+            <div class="text-center py-12 px-4">
+              <h2 class="text-title m-0 mb-2">No matches found</h2>
+              <p class="text-body text-neutral-500 m-0 mb-4">Try fewer words or check spelling.</p>
+              <a href="/search" class="inline-flex min-h-touch items-center text-brand-600 font-semibold no-underline">
+                Clear search
+              </a>
+            </div>
+          ) : (
+            <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 list-none m-0 p-0">
+              {items.map((item) => (
+                <li class="min-h-0">
+                  <OfferingCard offering={item} />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    ) : (
+      <p class="text-body text-neutral-500 m-0">Type a product name above to search the catalog.</p>
+    )
+  }
 </MarketplaceLayout>

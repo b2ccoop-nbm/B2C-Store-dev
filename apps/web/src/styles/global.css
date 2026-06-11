@@ -109,4 +109,24 @@
   .pb-nav-safe {
     padding-bottom: calc(var(--spacing-nav) + env(safe-area-inset-bottom, 0px));
   }
+
+  /* B2CCoop landing gradient — marketing heroes only */
+  .text-gradient-ecosystem {
+    background-image: linear-gradient(
+      to right,
+      var(--color-ecosystem-600),
+      var(--color-brand-600)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .bg-gradient-ecosystem {
+    background-image: linear-gradient(
+      to right,
+      var(--color-ecosystem-600),
+      var(--color-brand-600)
+    );
+  }
 }

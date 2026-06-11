@@ -1,22 +1,32 @@
-/* B2CCoop design tokens — see docs/FRONTEND-ARCHITECTURE.md */
+/* B2CCoop design tokens — shared ecosystem identity (not a separate store brand).
+ * Blue = ecosystem anchors · Teal = commerce · Green = membership/coop · Orange = merchant */
 
 @theme {
-  /* Brand */
+  /* Ecosystem — royal blue (logo, shell anchors; use sparingly) */
+  --color-ecosystem-50: #e8eef8;
+  --color-ecosystem-600: #004aad;
+  --color-ecosystem-700: #003d8f;
+
+  /* Commerce — teal (storefront: buttons, chips, cart, prices, active nav) */
   --color-brand-50: #f0fdfa;
   --color-brand-600: #0e7490;
   --color-brand-700: #0c6378;
 
-  /* Accent (officer) */
-  --color-accent-50: #fffbeb;
-  --color-accent-600: #b45309;
+  /* Merchant / business — orange (sell dashboard, staff/officer tools) */
+  --color-accent-50: #fff7ed;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-merchant-50: #fff7ed;
+  --color-merchant-600: #ea580c;
+  --color-merchant-700: #c2410c;
 
-  /* Coop */
+  /* Membership / cooperative benefits — green */
   --color-coop-50: #ecfdf5;
   --color-coop-600: #047857;
-
-  /* Member */
-  --color-member-50: #f0f9ff;
-  --color-member-600: #0369a1;
+  --color-coop-700: #065f46;
+  --color-member-50: #ecfdf5;
+  --color-member-600: #047857;
+  --color-member-700: #065f46;
 
   /* Neutral */
   --color-neutral-0: #ffffff;
@@ -52,7 +62,7 @@
   --text-price--line-height: 1.2;
 
   /* Spacing */
-  --spacing-touch: 3rem; /* 48px — Sprint 1 minimum touch target */
+  --spacing-touch: 3rem;
   --spacing-nav: 4rem;
 
   /* Radius */
@@ -71,7 +81,11 @@
 }
 
 :root {
+  --color-ecosystem: var(--color-ecosystem-600);
+  --color-commerce: var(--color-brand-600);
   --color-brand: var(--color-brand-600);
+  --color-merchant: var(--color-merchant-600);
+  --color-coop: var(--color-coop-600);
   --color-surface: var(--color-neutral-50);
   --radius-card: var(--radius-lg);
   --height-touch: var(--spacing-touch);

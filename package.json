@@ -17,7 +17,10 @@
     "db:generate": "npm run db:generate --workspace @b2ccoop/store-api",
     "db:seed": "npm run db:seed --workspace @b2ccoop/store-api",
     "setup": "bash scripts/setup-local.sh",
-    "check": "bash scripts/check-dev.sh"
+    "check": "bash scripts/check-dev.sh",
+    "secret:admin": "bash scripts/put-admin-secret.sh",
+    "deploy:pages": "bash scripts/deploy-pages.sh",
+    "smoke:accounting": "bash scripts/smoke-accounting.sh"
   },
   "engines": {
     "node": ">=20"

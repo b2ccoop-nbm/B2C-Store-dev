@@ -1,11 +1,22 @@
 ---
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import Button from "@/components/atoms/Button.astro";
-import Badge from "@/components/atoms/Badge.astro";
 import Card from "@/components/atoms/Card.astro";
 import EmptyState from "@/components/atoms/EmptyState.astro";
+import Price from "@/components/molecules/Price.astro";
+import PatronageAmount from "@/components/molecules/PatronageAmount.astro";
+import SellerMiniCard from "@/components/molecules/SellerMiniCard.astro";
+import TrustBadgeRow from "@/components/organisms/TrustBadgeRow.astro";
+import AddToCartBar from "@/components/organisms/AddToCartBar.astro";
 import { fetchCatalog, findProductBySlug } from "@/services/catalog";
-import { formatPhp } from "@/lib/format";
+import {
+  addToCartLabel,
+  cartPayloadFromItem,
+  categorySlug,
+  isCoopVendor,
+  patronagePerUnit,
+} from "@/lib/offering";
+import { categoryIcon } from "@/lib/category-meta";
 
 const { slug } = Astro.params;
 let product = undefined;
@@ -18,15 +29,15 @@ try {
   error = e instanceof Error ? e.message : "Could not load product";
 }
 
-const cartPayload = product
-  ? JSON.stringify({
-      sku: product.sku,
-      name: product.name,
-      unitPrice: product.unitPrice,
-      patronagePerUnit: product.patronagePerUnit,
-      vendorCode: product.vendorCode,
-    })
-  : "";
+const cartPayload = product ? cartPayloadFromItem(product) : "";
+const patronage = product ? patronagePerUnit(product) : 0;
+const trustTypes = product
+  ? isCoopVendor(product.vendorCode)
+    ? (["coop-official"] as const)
+    : (["merchant-verified"] as const)
+  : [];
+const catSlug = product ? categorySlug(product.category) : "";
+const addLabel = product ? addToCartLabel(product.name) : "Add to cart";
 ---
 
 <MarketplaceLayout title={product?.name ?? "Product"} hideBottomNav>
@@ -36,32 +47,61 @@ const cartPayload = product
         <p class="text-danger-600 m-0">{error}</p>
       </Card>
     ) : !product ? (
-      <EmptyState title="Product not found">
-        <Button href="/category/products" variant="primary">Browse products</Button>
+      <EmptyState title="Product not found" description="This item may no longer be available.">
+        <Button href="/category/products" variant="primary">Browse all products</Button>
       </EmptyState>
     ) : (
-      <div class="max-w-lg">
-        <Badge variant="coop" class="mb-3">Coop product</Badge>
-        <h1 class="text-display m-0 mb-2">{product.name}</h1>
-        <p class="text-body-sm text-neutral-500 m-0 mb-4">{product.sku} · {product.vendorCode}</p>
-        <p class="text-price text-brand-600 m-0 mb-6">{formatPhp(product.unitPrice)}</p>
-        <p class="text-body text-neutral-500 mb-6">
-          Pay when you pick up your order at the coop counter.
-        </p>
-        <div class="flex flex-wrap gap-3">
-          <Button
-            type="button"
-            variant="primary"
-            class="b2c-add-to-cart"
-            data-cart-item={cartPayload}
+      <>
+        <nav class="text-body-sm text-neutral-500 mb-4" aria-label="Breadcrumb">
+          <a href="/" class="text-brand-600 no-underline">Home</a>
+          <span aria-hidden="true"> · </span>
+          <a href={`/category/${catSlug}`} class="text-brand-600 no-underline">{product.category}</a>
+        </nav>
+
+        <div class="pb-28 md:pb-6 max-w-lg">
+          <div
+            class="mb-6 flex aspect-[16/10] items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-ecosystem-50 text-6xl"
+            aria-hidden="true"
           >
-            Add to cart
-          </Button>
-          <Button href="/cart" variant="secondary">
-            View cart
-          </Button>
+            {categoryIcon(product.category)}
+          </div>
+
+          <TrustBadgeRow types={[...trustTypes]} />
+
+          <h1 class="text-display m-0 mt-4 mb-2">{product.name}</h1>
+          <p class="text-body-sm text-neutral-500 m-0 mb-4">{product.sku}</p>
+
+          <div class="flex flex-wrap items-end gap-4 mb-4">
+            <Price amount={product.unitPrice} />
+            <PatronageAmount amount={patronage} />
+          </div>
+
+          <Card class="mb-6 bg-brand-50 border-brand-600/20">
+            <p class="text-body-sm text-neutral-700 m-0">
+              <strong>Pay at pickup.</strong> Bring your order reference to the coop counter and pay when you collect your items.
+            </p>
+          </Card>
+
+          <SellerMiniCard vendorCode={product.vendorCode} class="mb-6" />
+
+          <div class="hidden md:flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              class="b2c-add-to-cart"
+              data-cart-item={cartPayload}
+              ariaLabel={addLabel}
+            >
+              Add to cart
+            </Button>
+            <Button href="/cart" variant="secondary">
+              View cart
+            </Button>
+          </div>
         </div>
-      </div>
+
+        <AddToCartBar offering={product} />
+      </>
     )
   }
 </MarketplaceLayout>

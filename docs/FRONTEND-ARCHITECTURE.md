@@ -38,19 +38,26 @@
 
 ## 1.1 Color system
 
-### Semantic palette
+**Rule:** Preserve B2CCoop’s blue-to-teal ecosystem identity. The store does **not** get a separate palette.
+
+| Layer | Token | Hex | Use |
+|-------|-------|-----|-----|
+| Ecosystem | `ecosystem-600` | `#004aad` | Logo, shell anchors, institutional trust — **sparingly** |
+| Ecosystem | `ecosystem-700` | `#003d8f` | Ecosystem hover / pressed |
+| Commerce | `brand-600` | `#0e7490` | Storefront: primary buttons, cart, prices, category chips, active bottom nav |
+| Commerce | `brand-700` | `#0c6378` | Commerce hover |
+| Commerce | `brand-50` | `#f0fdfa` | Commerce tinted surfaces |
+| Membership | `coop-600` | `#047857` | Coop badges, patronage, member benefits |
+| Membership | `coop-50` | `#ecfdf5` | Coop / member badge background |
+| Merchant | `merchant-600` / `accent-600` | `#ea580c` | Sell dashboard, staff/officer tools, business functions |
+| Merchant | `merchant-50` / `accent-50` | `#fff7ed` | Merchant / officer banner background |
+| Marketing | `.text-gradient-ecosystem` | blue → teal | Hero headlines inside the store (ties to landing) |
+
+### Semantic palette (neutrals & status)
 
 | Token | Hex | Role |
 |-------|-----|------|
-| `brand-600` | `#0e7490` | Primary actions, links, focus rings |
-| `brand-700` | `#0c6378` | Primary hover / pressed |
-| `brand-50` | `#f0fdfa` | Brand tinted surfaces |
-| `accent-600` | `#b45309` | Staff / officer CTAs, warnings |
-| `accent-50` | `#fffbeb` | Officer banner background |
-| `coop-600` | `#047857` | Coop trust, patronage, success coop |
-| `coop-50` | `#ecfdf5` | Coop badge background |
-| `member-600` | `#0369a1` | Member pricing, member seller |
-| `member-50` | `#f0f9ff` | Member strip background |
+| `member-*` | (alias `coop`) | Member benefits — green, not blue |
 | `neutral-0` | `#ffffff` | Cards, inputs |
 | `neutral-50` | `#f8fafc` | Page background |
 | `neutral-200` | `#e2e8f0` | Borders, dividers |
@@ -72,7 +79,11 @@ Do not change primary brand color per persona.
 
 ### Color usage rules
 
-- **Primary button:** `brand-600` on white text.
+- **App shell / logo:** `ecosystem-600` (royal blue) — rigid identity anchors only.
+- **Commerce actions:** `brand-600` (teal) — buttons, cart badge, active nav, product prices.
+- **Coop / member benefits:** `coop-600` (green) — patronage, membership badges.
+- **Merchant / staff:** `merchant-600` / `accent-600` (orange) — `/sell/*`, admin, officer banner.
+- **Primary button:** `brand-600` (commerce teal) on white text.
 - **Secondary button:** white bg, `neutral-200` border, `neutral-900` text.
 - **Never** use red/green alone for status — always icon + label (`StatusIndicator`).
 - **Contrast:** body text on `neutral-50` uses `neutral-900` (≥ 12:1). `neutral-500` only for captions ≥ 14px.

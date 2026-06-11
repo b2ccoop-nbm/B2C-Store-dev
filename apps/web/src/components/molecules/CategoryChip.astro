@@ -1,0 +1,25 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  href: string;
+  label: string;
+  icon?: string;
+  active?: boolean;
+}
+
+const { href, label, icon, active = false } = Astro.props;
+---
+
+<a
+  href={href}
+  class={cn(
+    "inline-flex items-center gap-2 min-h-touch px-4 rounded-full border text-body-sm font-semibold no-underline transition-colors",
+    active
+      ? "bg-brand-600 text-white border-brand-600"
+      : "bg-neutral-0 text-neutral-900 border-neutral-200 hover:border-brand-600",
+  )}
+>
+  {icon && <span aria-hidden="true">{icon}</span>}
+  <span>{label}</span>
+</a>

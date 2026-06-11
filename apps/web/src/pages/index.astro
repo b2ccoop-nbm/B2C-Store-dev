@@ -1,10 +1,14 @@
 ---
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import Button from "@/components/atoms/Button.astro";
-import Badge from "@/components/atoms/Badge.astro";
 import CatalogGrid from "@/components/molecules/CatalogGrid.astro";
 import Card from "@/components/atoms/Card.astro";
+import HeroBlock from "@/components/molecules/HeroBlock.astro";
+import MemberStrip from "@/components/molecules/MemberStrip.astro";
+import CategoryChip from "@/components/molecules/CategoryChip.astro";
 import { fetchCatalog, groupByCategory } from "@/services/catalog";
+import { categorySlug } from "@/lib/offering";
+import { CATEGORY_SHORTCUTS } from "@/lib/category-meta";
 
 let items: Awaited<ReturnType<typeof fetchCatalog>>["items"] = [];
 let error = "";
@@ -16,52 +20,50 @@ try {
   error = e instanceof Error ? e.message : "Could not load products";
 }
 
-const categories = Object.keys(groupByCategory(items)).sort();
+const categorySet = new Set(Object.keys(groupByCategory(items)).map((c) => categorySlug(c)));
+const chips = CATEGORY_SHORTCUTS.filter(
+  (c) => c.slug === "products" || categorySet.has(c.slug),
+);
 const featured = items.slice(0, 6);
+const memberItems = items.filter((i) => i.vendorCode.startsWith("B2C-")).slice(0, 6);
 ---
 
 <MarketplaceLayout title="Home" description="B2CCoop cooperative store — shop local products">
-  <section class="mb-8">
-    <Badge variant="coop">B2C Consumers Cooperative</Badge>
-    <h1 class="text-display mt-3 mb-2 text-neutral-900">Shop the coop store</h1>
-    <p class="text-body text-neutral-500 max-w-prose m-0">
-      Browse products, add to cart, and pay when you pick up at the counter.
-    </p>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <Button href="/category/products" variant="primary">All products</Button>
-      <Button href="/search" variant="secondary">Search</Button>
-    </div>
-  </section>
+  <HeroBlock />
 
   {error ? (
     <Card class="border-danger-600 bg-danger-50">
       <p class="text-body text-danger-600 m-0">{error}</p>
-      <p class="text-body-sm text-neutral-500 mt-2 m-0">Start the API with <code>npm run dev:api</code></p>
+      <p class="text-body-sm text-neutral-500 mt-2 m-0">
+        {import.meta.env.DEV
+          ? <>Start the API with <code>npm run dev:api</code></>
+          : <>Store may be temporarily unavailable. Call our help line from the footer.</>}
+      </p>
     </Card>
   ) : (
     <>
-      {categories.length > 0 && (
-        <section class="mb-8">
-          <h2 class="text-title-sm mb-3">Categories</h2>
-          <div class="flex flex-wrap gap-2">
+      <MemberStrip />
+
+      {chips.length > 0 && (
+        <section class="mb-8" aria-labelledby="home-categories">
+          <h2 id="home-categories" class="text-title-sm mb-3">Shop by category</h2>
+          <div class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
             {
-              categories.map((cat) => (
-                <Button
-                  href={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  {cat}
-                </Button>
+              chips.map((chip) => (
+                <CategoryChip
+                  href={`/category/${chip.slug}`}
+                  label={chip.label}
+                  icon={chip.icon}
+                />
               ))
             }
           </div>
         </section>
       )}
 
-      <section>
-        <h2 class="text-title-sm mb-4">Featured products</h2>
-        <CatalogGrid items={featured} />
+      <section class="mb-10" aria-labelledby="featured-heading">
+        <h2 id="featured-heading" class="text-title-sm mb-4">Featured</h2>
+        <CatalogGrid items={featured} emptyTitle="No featured products yet" />
         {items.length > featured.length && (
           <div class="mt-6 text-center">
             <Button href="/category/products" variant="ghost">
@@ -70,6 +72,15 @@ const featured = items.slice(0, 6);
           </div>
         )}
       </section>
+
+      {
+        memberItems.length > 0 && (
+          <section aria-labelledby="coop-heading">
+            <h2 id="coop-heading" class="text-title-sm mb-4">From the coop</h2>
+            <CatalogGrid items={memberItems} />
+          </section>
+        )
+      }
     </>
   )}
 </MarketplaceLayout>

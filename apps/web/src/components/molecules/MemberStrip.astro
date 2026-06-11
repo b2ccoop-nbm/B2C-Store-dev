@@ -1,0 +1,36 @@
+---
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+
+interface Props {
+  loggedIn?: boolean;
+}
+
+const { loggedIn = false } = Astro.props;
+---
+
+<Card padding="md" class="bg-coop-50 border-coop-600/20 mb-8">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-title-sm text-coop-700 m-0">Patronage on every purchase</p>
+      <p class="text-body-sm text-neutral-600 mt-1 m-0">
+        {
+          loggedIn
+            ? "Your coop benefits grow when you shop here."
+            : "Members earn patronage when they buy from the coop store."
+        }
+      </p>
+    </div>
+    {
+      loggedIn ? (
+        <Button href="/my-coop" variant="secondary" size="sm">
+          View My Coop
+        </Button>
+      ) : (
+        <Button href="/profile" variant="secondary" size="sm">
+          Sign in to track yours
+        </Button>
+      )
+    }
+  </div>
+</Card>

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "astro dev --port 5175",
     "build": "astro check && astro build",
+    "build:pages": "astro check && astro build --mode production",
+    "deploy:pages": "npm run build:pages && wrangler pages deploy dist --project-name=b2ccoop-store",
     "preview": "astro preview --port 5175",
     "typecheck": "astro check"
   },

@@ -1,0 +1,28 @@
+---
+import Button from "@/components/atoms/Button.astro";
+import Badge from "@/components/atoms/Badge.astro";
+
+interface Props {
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+const {
+  title = "Member-owned marketplace for our community",
+  subtitle = "Browse products, add to cart, and pay when you pick up at the counter.",
+  ctaLabel = "Browse deals",
+  ctaHref = "/category/products",
+} = Astro.props;
+---
+
+<section class="mb-8 rounded-xl bg-gradient-to-br from-ecosystem-50 via-neutral-0 to-brand-50 border border-neutral-200 p-5 md:p-8">
+  <Badge variant="coop" class="mb-3">B2C Consumers Cooperative</Badge>
+  <h1 class="text-display md:text-display-lg mt-0 mb-2 text-gradient-ecosystem max-w-prose">{title}</h1>
+  <p class="text-body text-neutral-600 max-w-prose m-0">{subtitle}</p>
+  <div class="mt-5 flex flex-wrap gap-2">
+    <Button href={ctaHref} variant="primary">{ctaLabel}</Button>
+    <Button href="/search" variant="secondary">Search</Button>
+  </div>
+</section>

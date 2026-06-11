@@ -1,0 +1,56 @@
+---
+import Button from "@/components/atoms/Button.astro";
+---
+
+<div
+  id="welcome-sheet"
+  class="fixed inset-0 z-50 hidden items-end justify-center bg-neutral-900/40 p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="welcome-title"
+>
+  <div class="w-full max-w-md rounded-t-2xl bg-neutral-0 p-6 elevation-4">
+    <h2 id="welcome-title" class="text-title m-0 mb-2">Welcome to your coop marketplace</h2>
+    <p class="text-body text-neutral-600 m-0 mb-6">
+      Shop local products from your cooperative. No account needed to checkout — pay when you pick up.
+    </p>
+    <div class="flex flex-col gap-2">
+      <Button href="/category/products" variant="primary" fullWidth id="welcome-browse">
+        Browse products
+      </Button>
+      <Button type="button" variant="ghost" fullWidth id="welcome-dismiss">
+        Continue browsing
+      </Button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { STORAGE_KEYS } from "@/lib/constants";
+
+  function initWelcomeSheet() {
+    const sheet = document.getElementById("welcome-sheet");
+    if (!sheet || localStorage.getItem(STORAGE_KEYS.welcomeSeen) === "1") return;
+
+    const dismiss = () => {
+      sheet.classList.add("hidden");
+      sheet.classList.remove("flex");
+      localStorage.setItem(STORAGE_KEYS.welcomeSeen, "1");
+    };
+
+    sheet.classList.remove("hidden");
+    sheet.classList.add("flex");
+
+    document.getElementById("welcome-dismiss")?.addEventListener("click", dismiss);
+    document.getElementById("welcome-browse")?.addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEYS.welcomeSeen, "1");
+    });
+
+    sheet.addEventListener("click", (e) => {
+      if (e.target === sheet) dismiss();
+    });
+  }
+
+  initWelcomeSheet();
+  document.addEventListener("astro:page-load", initWelcomeSheet);
+</script>

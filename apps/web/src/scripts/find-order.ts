@@ -6,6 +6,11 @@ export function setupFindOrder(apiBase: string): void {
     e.preventDefault();
     findError?.classList.add("hidden");
     if (!(form instanceof HTMLFormElement)) return;
+    const submitBtn = document.getElementById("find-submit");
+    if (submitBtn instanceof HTMLButtonElement) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Looking up…";
+    }
     const fd = new FormData(form);
     const orderId = String(fd.get("orderId") ?? "").trim();
     const email = String(fd.get("email") ?? "").trim().toLowerCase();
@@ -23,6 +28,10 @@ export function setupFindOrder(apiBase: string): void {
       if (findError) {
         findError.textContent = err instanceof Error ? err.message : "Could not find order";
         findError.classList.remove("hidden");
+      }
+      if (submitBtn instanceof HTMLButtonElement) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "View order";
       }
     }
   });

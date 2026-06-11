@@ -3,40 +3,86 @@ import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import Card from "@/components/atoms/Card.astro";
 import Button from "@/components/atoms/Button.astro";
 import Input from "@/components/atoms/Input.astro";
+import EmptyState from "@/components/atoms/EmptyState.astro";
 ---
 
-<MarketplaceLayout title="My activity">
+<MarketplaceLayout title="My activity" mobileHeaderTitle="Activity">
   <header class="mb-6">
-    <h1 class="text-display m-0">Find your order</h1>
+    <h1 class="text-display m-0">My activity</h1>
     <p class="text-body-sm text-neutral-500 mt-2 m-0">
-      Enter the order ID from your confirmation email or receipt.
+      Your orders and receipts from the coop store.
     </p>
   </header>
 
-  <Card class="max-w-md">
-    <form id="find-order-form" class="space-y-4">
-      <Input
-        id="order-id"
-        name="orderId"
-        label="Order ID"
-        placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
-        required
-        autocomplete="off"
-      />
-      <Input
-        id="order-email"
-        name="email"
-        type="email"
-        label="Email used at checkout"
-        placeholder="you@example.com"
-        required
-      />
-      <Button type="submit" variant="primary" fullWidth>
-        View order
-      </Button>
-    </form>
-    <p id="find-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
-  </Card>
+  <div class="flex gap-2 mb-8 border-b border-neutral-200" role="tablist" aria-label="Activity filters">
+    <button
+      type="button"
+      class="px-4 py-3 text-body-sm font-semibold border-b-2 border-brand-600 text-brand-600 bg-transparent cursor-default"
+      role="tab"
+      aria-selected="true"
+    >
+      Active
+    </button>
+    <button
+      type="button"
+      class="px-4 py-3 text-body-sm font-medium text-neutral-500 bg-transparent border-b-2 border-transparent"
+      role="tab"
+      aria-selected="false"
+      disabled
+      title="Coming soon"
+    >
+      Completed
+    </button>
+    <button
+      type="button"
+      class="px-4 py-3 text-body-sm font-medium text-neutral-500 bg-transparent border-b-2 border-transparent"
+      role="tab"
+      aria-selected="false"
+      disabled
+      title="Coming soon"
+    >
+      Saved
+    </button>
+  </div>
+
+  <EmptyState
+    title="No orders yet"
+    description="When you buy something, your receipts will show here. For now, find a recent order below."
+  >
+    <Button href="/category/products" variant="primary">Start shopping</Button>
+  </EmptyState>
+
+  <section class="mt-10" aria-labelledby="find-order-heading">
+    <h2 id="find-order-heading" class="text-title-sm m-0 mb-2">Find your order</h2>
+    <p class="text-body-sm text-neutral-500 m-0 mb-4">
+      Enter the order ID from your receipt email. No sign-in required.
+    </p>
+
+    <Card class="max-w-md">
+      <form id="find-order-form" class="space-y-4">
+        <Input
+          id="order-id"
+          name="orderId"
+          label="Order ID"
+          placeholder="From your receipt"
+          required
+          autocomplete="off"
+        />
+        <Input
+          id="order-email"
+          name="email"
+          type="email"
+          label="Email used at checkout"
+          placeholder="you@example.com"
+          required
+        />
+        <Button type="submit" variant="primary" fullWidth id="find-submit">
+          View order
+        </Button>
+      </form>
+      <p id="find-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+    </Card>
+  </section>
 </MarketplaceLayout>
 
 <script>

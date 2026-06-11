@@ -1,0 +1,18 @@
+---
+import TrustBadge from "@/components/molecules/TrustBadge.astro";
+import type { TrustType } from "@/lib/trust";
+
+interface Props {
+  types: TrustType[];
+}
+
+const { types } = Astro.props;
+---
+
+<div class="flex flex-wrap gap-2" role="list" aria-label="Trust indicators">
+  {types.map((type) => (
+    <span role="listitem">
+      <TrustBadge type={type} />
+    </span>
+  ))}
+</div>

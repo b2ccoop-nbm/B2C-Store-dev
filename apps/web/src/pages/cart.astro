@@ -12,21 +12,24 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     <p class="text-body-sm text-neutral-500 mt-1 m-0">Pay at pickup when you collect your order.</p>
   </header>
 
-  <div id="cart-root">
-    <p class="text-neutral-500">Loading cart…</p>
+  <div id="cart-root" aria-live="polite">
+    <p class="text-neutral-500 m-0">Loading cart…</p>
   </div>
 
-  <section id="checkout-panel" class="hidden mt-8 pt-8 border-t border-neutral-200">
-    <h2 class="text-title-sm m-0 mb-4">Checkout</h2>
+  <section id="checkout-panel" class="hidden mt-8 pt-8 border-t border-neutral-200 pb-24 md:pb-0">
+    <h2 class="text-title-sm m-0 mb-1">Checkout</h2>
+    <p class="text-body-sm text-neutral-500 m-0 mb-4">No account needed — we’ll email your receipt.</p>
     <form id="checkout-form" class="max-w-md space-y-4">
       <label class="block">
         <span class="text-body-sm font-medium">Email</span>
+        <span class="block text-caption text-neutral-500 mt-0.5">We’ll send your receipt here</span>
         <input
           type="email"
           name="email"
           id="checkout-email"
           required
           placeholder="you@example.com"
+          autocomplete="email"
           class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body"
         />
       </label>
@@ -36,6 +39,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
           type="text"
           name="displayName"
           placeholder="Your name"
+          autocomplete="name"
           class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body"
         />
       </label>
@@ -48,8 +52,17 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
         Place order — pay at pickup
       </Button>
     </form>
-    <p id="checkout-error" class="hidden text-body-sm text-danger-600 mt-3" role="alert" />
+    <p id="checkout-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
   </section>
+
+  <div
+    id="sticky-checkout"
+    class="hidden fixed bottom-[calc(var(--spacing-nav)+0px)] md:bottom-0 inset-x-0 z-30 border-t border-neutral-200 bg-neutral-0/95 backdrop-blur px-4 py-3 pb-[env(safe-area-inset-bottom)] md:relative md:border-0 md:bg-transparent md:p-0 md:mt-6"
+  >
+    <Button type="button" variant="primary" fullWidth id="sticky-checkout-btn" class="md:hidden">
+      Continue to checkout
+    </Button>
+  </div>
 
   {turnstileSiteKey && (
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />

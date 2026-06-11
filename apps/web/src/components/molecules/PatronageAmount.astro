@@ -1,0 +1,20 @@
+---
+import { formatPhp } from "@/lib/format";
+
+interface Props {
+  amount: string | number;
+  class?: string;
+}
+
+const { amount, class: className = "" } = Astro.props;
+const value = Number(amount);
+---
+
+{
+  value > 0 && (
+    <p class:list={["text-body-sm text-coop-600 m-0 font-medium", className]}>
+      <span class="sr-only">Patronage </span>
+      {formatPhp(value)} patronage
+    </p>
+  )
+}

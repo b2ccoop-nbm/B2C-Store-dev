@@ -1,0 +1,24 @@
+---
+import Badge from "@/components/atoms/Badge.astro";
+import type { TrustType } from "@/lib/trust";
+
+interface Props {
+  type: TrustType;
+  class?: string;
+}
+
+const { type, class: className } = Astro.props;
+
+const labels: Record<TrustType, { text: string; variant: "coop" | "brand" | "member" | "neutral" }> = {
+  "coop-official": { text: "Coop official", variant: "coop" },
+  "partner-official": { text: "Partner", variant: "brand" },
+  "coop-recommended": { text: "Coop pick", variant: "coop" },
+  "merchant-verified": { text: "Verified seller", variant: "neutral" },
+  "member-seller": { text: "Member seller", variant: "member" },
+  "service-trusted": { text: "Trusted service", variant: "brand" },
+};
+
+const { text, variant } = labels[type];
+---
+
+<Badge variant={variant} class={className}>{text}</Badge>

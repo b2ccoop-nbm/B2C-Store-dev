@@ -1,0 +1,49 @@
+---
+interface Props {
+  id?: string;
+  name?: string;
+  value?: string;
+  placeholder?: string;
+  autofocus?: boolean;
+  formAction?: string;
+  class?: string;
+}
+
+const {
+  id = "search-q",
+  name = "q",
+  value = "",
+  placeholder = "Search the coop market…",
+  autofocus = false,
+  formAction = "/search",
+  class: className = "",
+} = Astro.props;
+---
+
+<form method="get" action={formAction} class:list={["relative", className]} role="search">
+  <label for={id} class="sr-only">Search offerings</label>
+  <svg
+    class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="8"></circle>
+    <path d="m21 21-4.3-4.3"></path>
+  </svg>
+  <input
+    type="search"
+    id={id}
+    name={name}
+    value={value}
+    placeholder={placeholder}
+    autocomplete="off"
+    enterkeyhint="search"
+    autofocus={autofocus}
+    class="w-full min-h-touch pl-12 pr-4 rounded-xl border border-neutral-200 bg-neutral-0 text-body text-neutral-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+  />
+</form>

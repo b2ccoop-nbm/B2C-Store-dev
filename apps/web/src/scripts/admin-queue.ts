@@ -59,7 +59,7 @@ export function setupAdminQueue(apiBase: string): void {
             <div class="flex flex-col gap-2">
               <a href="/order/${o.orderId}" class="text-body-sm font-semibold text-brand-600">Receipt →</a>
               <button type="button" class="b2c-confirm-pickup touch-target min-h-10 px-4 rounded-lg bg-accent-600 text-white text-body-sm font-semibold border-0 cursor-pointer" data-id="${o.orderId}">
-                Confirm pickup
+                Confirm payment
               </button>
             </div>
           </div>

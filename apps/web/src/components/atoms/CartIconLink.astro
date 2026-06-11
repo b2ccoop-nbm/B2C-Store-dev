@@ -1,0 +1,35 @@
+---
+interface Props {
+  class?: string;
+  iconClass?: string;
+}
+
+const { class: className = "", iconClass = "text-neutral-900" } = Astro.props;
+---
+
+<a
+  href="/cart"
+  data-cart-link
+  class:list={["relative inline-flex items-center justify-center", className]}
+  aria-label="Cart"
+>
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    class={iconClass}
+    aria-hidden="true"
+  >
+    <circle cx="8" cy="21" r="1"></circle>
+    <circle cx="19" cy="21" r="1"></circle>
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+  </svg>
+  <span
+    data-cart-badge
+    class="hidden absolute -right-1.5 -top-1 min-w-[1.125rem] rounded-full bg-brand-600 px-1 text-center text-[10px] font-bold leading-4 text-white"
+    aria-hidden="true"
+  ></span>
+</a>

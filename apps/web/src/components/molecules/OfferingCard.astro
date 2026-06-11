@@ -1,0 +1,65 @@
+---
+import type { CatalogItemPublic } from "@b2ccoop/store-shared";
+import Card from "@/components/atoms/Card.astro";
+import Button from "@/components/atoms/Button.astro";
+import TrustBadge from "@/components/molecules/TrustBadge.astro";
+import Price from "@/components/molecules/Price.astro";
+import PatronageAmount from "@/components/molecules/PatronageAmount.astro";
+import {
+  addToCartLabel,
+  cartPayloadFromItem,
+  isCoopVendor,
+  offeringHref,
+  patronagePerUnit,
+} from "@/lib/offering";
+import { categoryIcon } from "@/lib/category-meta";
+
+interface Props {
+  offering: CatalogItemPublic;
+  layout?: "grid" | "list";
+}
+
+const { offering, layout = "grid" } = Astro.props;
+const href = offeringHref(offering);
+const cartPayload = cartPayloadFromItem(offering);
+const patronage = patronagePerUnit(offering);
+const trustType = isCoopVendor(offering.vendorCode) ? "coop-official" : "merchant-verified";
+const icon = categoryIcon(offering.category);
+const addLabel = addToCartLabel(offering.name);
+---
+
+<Card class:list={["flex flex-col h-full overflow-hidden p-0", layout === "list" && "sm:flex-row"]}>
+  <a href={href} class:list={["no-underline text-inherit block", layout === "grid" ? "flex-1" : "sm:w-36 shrink-0"]}>
+    <div
+      class="relative flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-brand-50 to-ecosystem-50 text-4xl"
+      aria-hidden="true"
+    >
+      <span>{icon}</span>
+      <div class="absolute left-2 top-2 flex flex-wrap gap-1 max-w-[85%]">
+        <TrustBadge type={trustType} />
+      </div>
+    </div>
+    <div class="p-4">
+      <p class="text-caption text-neutral-500 m-0 mb-1">{offering.category}</p>
+      <h3 class="text-title-sm m-0 mb-2 line-clamp-2">{offering.name}</h3>
+      <p class="text-caption text-neutral-500 m-0 mb-2">Pickup at coop counter</p>
+      <div class="flex flex-wrap items-end justify-between gap-2">
+        <Price amount={offering.unitPrice} />
+        <PatronageAmount amount={patronage} />
+      </div>
+    </div>
+  </a>
+  <div class:list={["p-4 pt-0", layout === "list" && "sm:flex sm:items-end sm:p-4"]}>
+    <Button
+      type="button"
+      variant="primary"
+      size="sm"
+      fullWidth
+      class="b2c-add-to-cart"
+      data-cart-item={cartPayload}
+      ariaLabel={addLabel}
+    >
+      Add
+    </Button>
+  </div>
+</Card>

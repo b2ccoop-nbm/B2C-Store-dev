@@ -11,4 +11,14 @@ export type BottomNavId = (typeof BOTTOM_NAV)[number]["id"];
 
 export const STORAGE_KEYS = {
   persona: "b2ccoop_persona",
+  welcomeSeen: "b2ccoop_welcome_seen",
+  recentSearches: "b2ccoop_recent_searches",
+  firstCartAdd: "b2ccoop_first_cart_add",
+} as const;
+
+export const TRUST_COPY = {
+  coopName: "B2C Consumers Cooperative",
+  helpPhone: "+63 32 000 0000",
+  pickupLocation: "Coop store counter — main branch",
+  registration: "CDA-registered consumers cooperative",
 } as const;

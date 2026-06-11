@@ -14,6 +14,7 @@ interface Props {
   id?: string;
   class?: string;
   ariaLabel?: string;
+  [key: string]: unknown;
 }
 
 const {
@@ -26,10 +27,11 @@ const {
   id,
   class: className,
   ariaLabel,
+  ...rest
 } = Astro.props;
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold cursor-pointer select-none transition-colors active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-50 disabled:pointer-events-none touch-manipulation";
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand-600 text-white hover:bg-brand-700",
@@ -40,9 +42,9 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "min-h-9 px-3 text-body-sm",
-  md: "touch-target px-4 text-body",
-  lg: "min-h-12 px-6 text-body w-full md:w-auto",
+  sm: "min-h-touch px-3 text-body-sm",
+  md: "min-h-touch px-4 text-body",
+  lg: "min-h-touch px-6 text-body w-full md:w-auto",
 };
 
 const classes = cn(base, variants[variant], sizes[size], fullWidth && "w-full", className);
@@ -50,11 +52,11 @@ const classes = cn(base, variants[variant], sizes[size], fullWidth && "w-full", 
 
 {
   href ? (
-    <a href={href} id={id} class={classes} aria-label={ariaLabel}>
+    <a href={href} id={id} class={classes} aria-label={ariaLabel} {...rest}>
       <slot />
     </a>
   ) : (
-    <button type={type} id={id} class={classes} disabled={disabled} aria-label={ariaLabel}>
+    <button type={type} id={id} class={classes} disabled={disabled} aria-label={ariaLabel} {...rest}>
       <slot />
     </button>
   )

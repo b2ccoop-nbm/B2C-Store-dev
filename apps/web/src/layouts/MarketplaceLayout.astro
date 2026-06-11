@@ -6,6 +6,7 @@ import MobileBottomNav from "@/components/organisms/shell/MobileBottomNav.astro"
 import TrustFooter from "@/components/organisms/shell/TrustFooter.astro";
 import OfficerBanner from "@/components/organisms/shell/OfficerBanner.astro";
 import CartInteractions from "@/components/islands/CartInteractions.astro";
+import WelcomeSheet from "@/components/islands/WelcomeSheet.astro";
 
 interface Props {
   title: string;
@@ -34,4 +35,5 @@ const activePath = Astro.url.pathname;
   <TrustFooter />
   {!hideBottomNav && <MobileBottomNav activePath={activePath} />}
   <CartInteractions />
+  <WelcomeSheet />
 </BaseLayout>

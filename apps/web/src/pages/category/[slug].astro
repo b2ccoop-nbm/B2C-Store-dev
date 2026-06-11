@@ -24,9 +24,14 @@ const title =
 ---
 
 <MarketplaceLayout title={title}>
+  <nav class="text-body-sm text-neutral-500 mb-3" aria-label="Breadcrumb">
+    <a href="/" class="text-brand-600 no-underline">Home</a>
+    <span aria-hidden="true"> · </span>
+    <span>{title}</span>
+  </nav>
   <header class="mb-6">
     <h1 class="text-display m-0 mb-1">{title}</h1>
-    <p class="text-body-sm text-neutral-500 m-0">{items.length} products</p>
+    <p class="text-body-sm text-neutral-500 m-0">{items.length} {items.length === 1 ? "product" : "products"}</p>
   </header>
 
   {

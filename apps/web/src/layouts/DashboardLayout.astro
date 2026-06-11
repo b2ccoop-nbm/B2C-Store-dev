@@ -31,7 +31,7 @@ const sellLinks = [
     <div class="lg:grid lg:grid-cols-[14rem_1fr] lg:gap-8">
       <aside class="hidden lg:block" aria-label="Merchant navigation">
         <nav class="sticky top-24 flex flex-col gap-1">
-          <p class="text-caption font-semibold uppercase tracking-wide text-neutral-500 px-3 mb-2">
+          <p class="text-caption font-semibold uppercase tracking-wide text-merchant-600 px-3 mb-2">
             Merchant
           </p>
           {
@@ -41,7 +41,7 @@ const sellLinks = [
                 class={cn(
                   "touch-target flex items-center rounded-lg px-3 text-body-sm font-medium no-underline",
                   activePath === link.href
-                    ? "bg-brand-50 text-brand-600"
+                    ? "bg-merchant-50 text-merchant-600"
                     : "text-neutral-900 hover:bg-neutral-50",
                 )}
               >

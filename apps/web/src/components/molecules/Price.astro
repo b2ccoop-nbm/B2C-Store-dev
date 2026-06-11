@@ -1,0 +1,16 @@
+---
+import { formatPhp } from "@/lib/format";
+
+interface Props {
+  amount: string | number;
+  class?: string;
+  from?: boolean;
+}
+
+const { amount, class: className = "", from = false } = Astro.props;
+---
+
+<p class:list={["text-price text-brand-600 m-0", className]}>
+  {from && <span class="text-body-sm font-normal text-neutral-500">From </span>}
+  {formatPhp(amount)}
+</p>
