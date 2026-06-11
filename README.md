@@ -90,11 +90,15 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 
 | Doc | Topic |
 |-----|--------|
+| [docs/MARKETPLACE-DOMAIN.md](./docs/MARKETPLACE-DOMAIN.md) | Established domain model (offerings, sellers, transactions) |
+| [docs/PLATFORM-CORE-SERVICES.md](./docs/PLATFORM-CORE-SERVICES.md) | Platform capabilities, metadata, workflows, engines |
 | [docs/STACK-AND-SECURITY.md](./docs/STACK-AND-SECURITY.md) | Security architecture |
 | [docs/PLATFORM-EVALUATION.md](./docs/PLATFORM-EVALUATION.md) | Custom vs Shopify/Medusa |
 | [docs/FIREBASE-SUPABASE-DATABASE.md](./docs/FIREBASE-SUPABASE-DATABASE.md) | Auth & Postgres strategy |
 | [docs/INTEGRATION.md](./docs/INTEGRATION.md) | WebApp & Accounting contracts |
 | [docs/DEV-TESTING.md](./docs/DEV-TESTING.md) | Mock products & dev test accounts |
+
+B2CCoop is a **Community Commerce and Services Marketplace** — not product-only e-commerce. See [MARKETPLACE-DOMAIN.md](./MARKETPLACE-DOMAIN.md) and [PLATFORM-CORE-SERVICES.md](./PLATFORM-CORE-SERVICES.md).
 
 ## Phase roadmap
 
