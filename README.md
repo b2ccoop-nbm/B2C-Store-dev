@@ -98,6 +98,9 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 | [docs/INTEGRATION.md](./docs/INTEGRATION.md) | WebApp & Accounting contracts |
 | [docs/DEV-TESTING.md](./docs/DEV-TESTING.md) | Mock products & dev test accounts |
 | [docs/DEPLOY-PHASE-2B.md](./docs/DEPLOY-PHASE-2B.md) | Production go-live checklist |
+| [docs/UX-ARCHITECTURE.md](./docs/UX-ARCHITECTURE.md) | Unified marketplace UX (personas, nav, wireframes) |
+| [docs/UI-BLUEPRINT.md](./docs/UI-BLUEPRINT.md) | MVP screen inventory, components, build roadmap |
+| [docs/FRONTEND-ARCHITECTURE.md](./docs/FRONTEND-ARCHITECTURE.md) | Design system, Astro structure, tokens, performance |
 
 B2CCoop is a **Community Commerce and Services Marketplace** — not product-only e-commerce. See [MARKETPLACE-DOMAIN.md](./MARKETPLACE-DOMAIN.md) and [PLATFORM-CORE-SERVICES.md](./PLATFORM-CORE-SERVICES.md).
 
