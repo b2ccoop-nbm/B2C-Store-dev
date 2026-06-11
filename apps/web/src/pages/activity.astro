@@ -3,7 +3,6 @@ import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import Card from "@/components/atoms/Card.astro";
 import Button from "@/components/atoms/Button.astro";
 import Input from "@/components/atoms/Input.astro";
-import EmptyState from "@/components/atoms/EmptyState.astro";
 ---
 
 <MarketplaceLayout title="My activity" mobileHeaderTitle="Activity">
@@ -14,10 +13,27 @@ import EmptyState from "@/components/atoms/EmptyState.astro";
     </p>
   </header>
 
-  <div class="flex gap-2 mb-8 border-b border-neutral-200" role="tablist" aria-label="Activity filters">
+  <Card class="max-w-md mb-8">
+    <form id="activity-email-form" class="space-y-4">
+      <Input
+        id="activity-email"
+        name="email"
+        type="email"
+        label="Your email"
+        placeholder="Same email used at checkout"
+        required
+        autocomplete="email"
+      />
+      <Button type="submit" variant="primary" fullWidth>Load my orders</Button>
+    </form>
+    <p id="activity-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+
+  <div class="flex gap-2 mb-6 border-b border-neutral-200" role="tablist" aria-label="Activity filters">
     <button
       type="button"
-      class="px-4 py-3 text-body-sm font-semibold border-b-2 border-brand-600 text-brand-600 bg-transparent cursor-default"
+      data-activity-tab="active"
+      class="px-4 py-3 text-body-sm font-semibold border-b-2 border-brand-600 text-brand-600 bg-transparent cursor-pointer"
       role="tab"
       aria-selected="true"
     >
@@ -25,60 +41,30 @@ import EmptyState from "@/components/atoms/EmptyState.astro";
     </button>
     <button
       type="button"
-      class="px-4 py-3 text-body-sm font-medium text-neutral-500 bg-transparent border-b-2 border-transparent"
+      data-activity-tab="completed"
+      class="px-4 py-3 text-body-sm font-medium text-neutral-500 bg-transparent border-b-2 border-transparent cursor-pointer"
       role="tab"
       aria-selected="false"
-      disabled
-      title="Coming soon"
     >
       Completed
     </button>
-    <button
-      type="button"
-      class="px-4 py-3 text-body-sm font-medium text-neutral-500 bg-transparent border-b-2 border-transparent"
-      role="tab"
-      aria-selected="false"
-      disabled
-      title="Coming soon"
-    >
-      Saved
-    </button>
   </div>
 
-  <EmptyState
-    title="No orders yet"
-    description="When you buy something, your receipts will show here. For now, find a recent order below."
-  >
-    <Button href="/category/products" variant="primary">Start shopping</Button>
-  </EmptyState>
+  <p id="activity-empty" class="text-body-sm text-neutral-500 m-0 mb-4">
+    Enter your email above to see orders.
+  </p>
+  <div id="activity-order-list" class="space-y-3 max-w-2xl" />
 
-  <section class="mt-10" aria-labelledby="find-order-heading">
-    <h2 id="find-order-heading" class="text-title-sm m-0 mb-2">Find your order</h2>
+  <section class="mt-12" aria-labelledby="find-order-heading">
+    <h2 id="find-order-heading" class="text-title-sm m-0 mb-2">Find a single order</h2>
     <p class="text-body-sm text-neutral-500 m-0 mb-4">
-      Enter the order ID from your receipt email. No sign-in required.
+      Have an order ID from your receipt? Look it up directly.
     </p>
-
     <Card class="max-w-md">
       <form id="find-order-form" class="space-y-4">
-        <Input
-          id="order-id"
-          name="orderId"
-          label="Order ID"
-          placeholder="From your receipt"
-          required
-          autocomplete="off"
-        />
-        <Input
-          id="order-email"
-          name="email"
-          type="email"
-          label="Email used at checkout"
-          placeholder="you@example.com"
-          required
-        />
-        <Button type="submit" variant="primary" fullWidth id="find-submit">
-          View order
-        </Button>
+        <Input id="order-id" name="orderId" label="Order ID" placeholder="From your receipt" required autocomplete="off" />
+        <Input id="order-email" name="email" type="email" label="Email used at checkout" required />
+        <Button type="submit" variant="secondary" fullWidth id="find-submit">View order</Button>
       </form>
       <p id="find-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
     </Card>
@@ -86,7 +72,9 @@ import EmptyState from "@/components/atoms/EmptyState.astro";
 </MarketplaceLayout>
 
 <script>
+  import { setupActivityOrders } from "@/scripts/activity-orders";
   import { setupFindOrder } from "@/scripts/find-order";
   import { API_BASE } from "@/lib/api";
+  setupActivityOrders(API_BASE);
   setupFindOrder(API_BASE);
 </script>

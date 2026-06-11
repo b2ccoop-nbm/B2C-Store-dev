@@ -1,0 +1,25 @@
+---
+import Card from "@/components/atoms/Card.astro";
+import { formatPhp } from "@/lib/format";
+
+interface Props {
+  accruedTotal: string;
+  accrualCount: number;
+  email?: string;
+  class?: string;
+}
+
+const { accruedTotal, accrualCount, email, class: className } = Astro.props;
+const total = Number(accruedTotal) || 0;
+---
+
+<Card class:list={["bg-coop-50 border-coop-600/20", className]}>
+  <p class="text-caption font-semibold uppercase tracking-wide text-coop-600 m-0 mb-2">Store patronage</p>
+  <p class="text-display m-0 text-coop-700">{formatPhp(total)}</p>
+  <p class="text-body-sm text-neutral-600 mt-2 m-0">
+    {accrualCount === 0
+      ? "Patronage from coop store purchases will appear here."
+      : `${accrualCount} accrual${accrualCount === 1 ? "" : "s"} from marketplace orders.`}
+  </p>
+  {email ? <p class="text-caption text-neutral-500 mt-2 m-0 font-mono">{email}</p> : null}
+</Card>

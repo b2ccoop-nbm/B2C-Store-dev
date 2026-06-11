@@ -20,7 +20,8 @@
     "check": "bash scripts/check-dev.sh",
     "secret:admin": "bash scripts/put-admin-secret.sh",
     "deploy:pages": "bash scripts/deploy-pages.sh",
-    "smoke:accounting": "bash scripts/smoke-accounting.sh"
+    "smoke:accounting": "bash scripts/smoke-accounting.sh",
+    "smoke:merchant": "bash scripts/smoke-merchant-flow.sh"
   },
   "engines": {
     "node": ">=20"

@@ -22,3 +22,7 @@ export const TRUST_COPY = {
   pickupLocation: "Coop store counter — main branch",
   registration: "CDA-registered consumers cooperative",
 } as const;
+
+/** Member portal on WebApp — passbook & full coop profile require sign-in there. */
+export const WEBAPP_MEMBER_URL =
+  import.meta.env.PUBLIC_WEBAPP_URL ?? "https://b2ccoop.com";

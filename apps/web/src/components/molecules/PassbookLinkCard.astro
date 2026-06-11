@@ -1,0 +1,22 @@
+---
+import Card from "@/components/atoms/Card.astro";
+import Button from "@/components/atoms/Button.astro";
+import { WEBAPP_MEMBER_URL } from "@/lib/constants";
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+const href = WEBAPP_MEMBER_URL;
+---
+
+<Card class:list={className}>
+  <p class="text-caption font-semibold uppercase tracking-wide text-coop-600 m-0 mb-2">Share capital passbook</p>
+  <p class="text-body-sm text-neutral-600 m-0">
+    View share capital, dues, and your full member passbook in the B2CCoop member portal.
+  </p>
+  <Button href={href} variant="secondary" class="mt-4" target="_blank" rel="noopener noreferrer">
+    Open member portal →
+  </Button>
+</Card>

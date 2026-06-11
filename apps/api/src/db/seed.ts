@@ -32,8 +32,8 @@ export async function seedCatalog(db: ReturnType<typeof createDb>["db"]) {
       await db
         .update(vendors)
         .set({
-          slug: vendor.slug ?? v.slug ?? slugify(v.code),
-          description: vendor.description ?? v.description ?? null,
+          slug: v.slug ?? slugify(v.code),
+          description: v.description ?? vendor.description ?? null,
           updatedAt: new Date(),
         })
         .where(eq(vendors.id, vendor.id));

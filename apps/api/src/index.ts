@@ -29,6 +29,7 @@ import {
 import { getStorefront } from "./routes/storefront";
 import { postCheckout } from "./routes/checkout";
 import { getDevFixtures } from "./routes/dev-fixtures";
+import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activity";
 import { getOrder } from "./routes/orders";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
@@ -50,6 +51,8 @@ app.get("/", (c) =>
       "GET /storefront/:slug",
       "POST /checkout",
       "GET /orders/:id",
+      "GET /orders?email=",
+      "GET /members/store-patronage?email=",
       "POST /seller/applications",
       "GET /seller/applications",
       "GET /merchant/listings",
@@ -93,7 +96,9 @@ app.get("/health", async (c) => {
 app.get("/catalog", (c) => getCatalog(c));
 app.get("/storefront/:slug", (c) => getStorefront(c));
 app.post("/checkout", (c) => postCheckout(c));
+app.get("/orders", (c) => getOrdersByEmail(c));
 app.get("/orders/:id", (c) => getOrder(c));
+app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));
 
 app.post("/seller/applications", (c) => postSellerApplication(c));
 app.get("/seller/applications", (c) => getSellerApplicationStatus(c));

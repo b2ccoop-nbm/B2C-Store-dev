@@ -1,8 +1,55 @@
 ---
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
-import RouteStub from "@/features/shared/RouteStub.astro";
+import Card from "@/components/atoms/Card.astro";
+import Button from "@/components/atoms/Button.astro";
+import Input from "@/components/atoms/Input.astro";
+import PassbookLinkCard from "@/components/molecules/PassbookLinkCard.astro";
+import PatronageCard from "@/components/molecules/PatronageCard.astro";
 ---
 
 <MarketplaceLayout title="My Coop">
-  <RouteStub title="My Coop" description="Patronage and passbook integration ship in Sprint 5." />
+  <header class="mb-6">
+    <h1 class="text-display m-0">My Coop</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Patronage from store purchases and links to your member passbook.
+    </p>
+  </header>
+
+  <Card class="max-w-md mb-8">
+    <form id="coop-email-form" class="space-y-4">
+      <Input
+        id="coop-email"
+        name="email"
+        type="email"
+        label="Member email"
+        placeholder="member@example.com"
+        required
+        autocomplete="email"
+        hint="Same email you use at checkout or in the member portal"
+      />
+      <Button type="submit" variant="primary" fullWidth>Load patronage</Button>
+    </form>
+    <p id="coop-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
+  </Card>
+
+  <div class="grid gap-6 md:grid-cols-2 max-w-4xl">
+    <div id="patronage-card">
+      <PatronageCard accruedTotal="0" accrualCount={0} />
+    </div>
+    <PassbookLinkCard />
+  </div>
+
+  <Card class="max-w-2xl mt-8 bg-brand-50 border-brand-600/20">
+    <h2 class="text-title-sm m-0">Shop the coop store</h2>
+    <p class="text-body-sm text-neutral-600 mt-2 m-0">
+      Member pricing and patronage accrue when you buy through the marketplace.
+    </p>
+    <Button href="/category/products" variant="primary" class="mt-4">Browse products</Button>
+  </Card>
 </MarketplaceLayout>
+
+<script>
+  import { setupMyCoopPatronage } from "@/scripts/my-coop-patronage";
+  import { API_BASE } from "@/lib/api";
+  setupMyCoopPatronage(API_BASE);
+</script>
