@@ -97,6 +97,7 @@ WebApp (`3000` / `5173`) and Accounting (`3010` / `5174`) are separate repos.
 | [docs/FIREBASE-SUPABASE-DATABASE.md](./docs/FIREBASE-SUPABASE-DATABASE.md) | Auth & Postgres strategy |
 | [docs/INTEGRATION.md](./docs/INTEGRATION.md) | WebApp & Accounting contracts |
 | [docs/DEV-TESTING.md](./docs/DEV-TESTING.md) | Mock products & dev test accounts |
+| [docs/DEPLOY-PHASE-2B.md](./docs/DEPLOY-PHASE-2B.md) | Production go-live checklist |
 
 B2CCoop is a **Community Commerce and Services Marketplace** — not product-only e-commerce. See [MARKETPLACE-DOMAIN.md](./MARKETPLACE-DOMAIN.md) and [PLATFORM-CORE-SERVICES.md](./PLATFORM-CORE-SERVICES.md).
 
@@ -105,4 +106,4 @@ B2CCoop is a **Community Commerce and Services Marketplace** — not product-onl
 - **Phase 0** ✓ scaffold, schema, health, seed catalog
 - **Phase 1** ✓ catalog, guest checkout, pay-on-pickup, staff confirm → Accounting
 - **Phase 2** (in progress) PayMongo checkout + webhook, Turnstile, Firebase member sign-in, WebApp member resolve
-- **Phase 2b** Deploy `store.b2ccoop.com`, WebApp `VITE_COOP_STORE_URL`
+- **Phase 2b** (in progress) Deploy `store.b2ccoop.com`, WebApp `VITE_COOP_STORE_URL` — see [docs/DEPLOY-PHASE-2B.md](./docs/DEPLOY-PHASE-2B.md)

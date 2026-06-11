@@ -5,7 +5,11 @@
   "compatibility_date": "2026-04-13",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    "PUBLIC_STORE_URL": "https://store.b2ccoop.com",
+    "WEBAPP_API_URL": "https://b2ccoop-webapp.nmatunog.workers.dev/api",
+    "ACCOUNTING_API_URL": "https://b2ccoop-accounting-production.up.railway.app",
+    "FIREBASE_PROJECT_ID": "b2ccoop-87114"
   },
   "observability": {
     "enabled": true
