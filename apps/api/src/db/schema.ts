@@ -50,6 +50,8 @@ export const vendors = pgTable("vendors", {
   description: text("description"),
   /** SHA-256 hex of per-vendor API access token (plaintext shown once on approval). */
   apiTokenHash: varchar("api_token_hash", { length: 64 }),
+  /** Firebase Auth UID of the store owner (linked after member sign-in). */
+  firebaseUid: varchar("firebase_uid", { length: 128 }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -65,6 +67,9 @@ export const sellerApplications = pgTable("seller_applications", {
   proposedVendorCode: varchar("proposed_vendor_code", { length: 64 }),
   status: sellerApplicationStatusEnum("status").notNull().default("PENDING"),
   vendorId: uuid("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  applicantFirebaseUid: varchar("applicant_firebase_uid", { length: 128 }),
+  /** SHA-256 hex of status lookup token (plaintext shown once on submit). */
+  statusTokenHash: varchar("status_token_hash", { length: 64 }),
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

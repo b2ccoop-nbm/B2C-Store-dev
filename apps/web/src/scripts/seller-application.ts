@@ -1,6 +1,10 @@
 import { API_BASE } from "@/lib/api";
+import { saveApplicationStatusToken } from "@/lib/application-status";
 import { fetchSellerApplication, type SellerApplication } from "@/lib/merchant-onboarding";
+import { bindVendorToMember, getFirebaseIdToken, getStoredMemberEmail } from "@/lib/member-auth";
 import { getMerchantEmail, saveMerchantSession, validateMerchantToken } from "@/lib/merchant-session";
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 function syncEmailFields(email: string): void {
   for (const id of ["applicantEmail", "check-email", "merchant-email"]) {
@@ -12,7 +16,7 @@ function syncEmailFields(email: string): void {
 }
 
 function getSharedEmail(): string {
-  const stored = getMerchantEmail();
+  const stored = getMerchantEmail() || getStoredMemberEmail();
   if (stored) return stored;
 
   for (const id of ["applicantEmail", "check-email", "merchant-email"]) {
@@ -22,6 +26,12 @@ function getSharedEmail(): string {
     }
   }
   return "";
+}
+
+function getTurnstileToken(): string | undefined {
+  if (!turnstileSiteKey) return undefined;
+  const el = document.querySelector("[name=cf-turnstile-response]");
+  return el instanceof HTMLInputElement ? el.value.trim() || undefined : undefined;
 }
 
 function updateCredentialsVisibility(app: SellerApplication | null): void {
@@ -39,6 +49,29 @@ function updateCredentialsVisibility(app: SellerApplication | null): void {
   }
 }
 
+function renderStatusHtml(app: SellerApplication): string {
+  let html = `<p class="text-body font-semibold m-0">${app.businessName}</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">Status: <strong>${app.status}</strong></p>`;
+
+  if (app.proposedVendorCode) {
+    html += `<p class="text-body-sm mt-2 m-0">Proposed seller code: <code class="font-mono">${app.proposedVendorCode}</code></p>`;
+  }
+
+  const vendor = app.vendor;
+  if (app.status === "APPROVED" && vendor) {
+    html += `<p class="text-body-sm mt-3 m-0">Your seller code: <code class="font-mono">${vendor.code}</code></p>
+      <p class="text-body-sm mt-1 m-0"><a href="/store/${vendor.slug}" class="text-brand-600 font-semibold">View your storefront →</a></p>
+      <p class="text-caption text-neutral-500 mt-2 m-0">Enter your access token below to manage listings and orders on this device.</p>`;
+  } else if (app.status === "PENDING") {
+    html += `<p class="text-body-sm mt-2 m-0">Coop officers are reviewing your application. You'll receive an access token once approved.</p>`;
+  } else if (app.status === "REJECTED") {
+    html += `<p class="text-body-sm text-danger-600 mt-2 m-0">${app.reviewNotes ?? "Application was not approved."}</p>
+      <p class="text-body-sm mt-2 m-0">You may submit a new application above with updated details.</p>`;
+  }
+
+  return html;
+}
+
 export function setupSellerApplicationForm(apiBase = API_BASE): void {
   const form = document.getElementById("seller-application-form");
   const statusPanel = document.getElementById("application-status");
@@ -48,10 +81,14 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
   const checkBtn = document.getElementById("check-application");
   const stepperEl = document.getElementById("onboarding-stepper");
 
-  const storedEmail = getMerchantEmail();
+  const storedEmail = getMerchantEmail() || getStoredMemberEmail();
   if (storedEmail) syncEmailFields(storedEmail);
 
-  async function showStatus(email: string, options?: { scroll?: boolean; submitted?: boolean }) {
+  void getFirebaseIdToken().then((token) => {
+    if (token) void refreshStatus({ scroll: false });
+  });
+
+  async function refreshStatus(options?: { scroll?: boolean; submitted?: boolean; email?: string }) {
     if (!statusPanel) return;
     statusCard?.classList.remove("hidden");
     statusPanel.classList.remove("hidden");
@@ -62,34 +99,19 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
     }
 
     try {
-      const app = await fetchSellerApplication(apiBase, email);
+      const app = await fetchSellerApplication(apiBase, {
+        email: options?.email,
+        turnstileToken: getTurnstileToken(),
+      });
+
       if (!app) {
         statusPanel.innerHTML =
-          "<p class='text-body m-0'>No application on file for this email. Submit the form above to apply.</p>";
+          "<p class='text-body m-0'>No application on file. Submit the form above to apply, or sign in with the email you used.</p>";
         updateCredentialsVisibility(null);
         return;
       }
 
-      let html = `<p class="text-body font-semibold m-0">${app.businessName}</p>
-        <p class="text-body-sm text-neutral-500 mt-1 m-0">Status: <strong>${app.status}</strong></p>`;
-
-      if (app.proposedVendorCode) {
-        html += `<p class="text-body-sm mt-2 m-0">Proposed seller code: <code class="font-mono">${app.proposedVendorCode}</code></p>`;
-      }
-
-      const vendor = app.vendor;
-      if (app.status === "APPROVED" && vendor) {
-        html += `<p class="text-body-sm mt-3 m-0">Your seller code: <code class="font-mono">${vendor.code}</code></p>
-          <p class="text-body-sm mt-1 m-0"><a href="/store/${vendor.slug}" class="text-brand-600 font-semibold">View your storefront →</a></p>
-          <p class="text-caption text-neutral-500 mt-2 m-0">Enter your access token below to manage listings and orders on this device.</p>`;
-      } else if (app.status === "PENDING") {
-        html += `<p class="text-body-sm mt-2 m-0">Coop officers are reviewing your application. You'll receive an access token once approved.</p>`;
-      } else if (app.status === "REJECTED") {
-        html += `<p class="text-body-sm text-danger-600 mt-2 m-0">${app.reviewNotes ?? "Application was not approved."}</p>
-          <p class="text-body-sm mt-2 m-0">You may submit a new application above with updated details.</p>`;
-      }
-
-      statusPanel.innerHTML = html;
+      statusPanel.innerHTML = renderStatusHtml(app);
       updateCredentialsVisibility(app);
 
       if (stepperEl) {
@@ -103,15 +125,14 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
       if (options?.scroll && statusCard) {
         statusCard.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    } catch {
-      statusPanel.innerHTML = "<p class='text-danger-600 m-0'>Could not load application status.</p>";
+    } catch (err) {
+      statusPanel.innerHTML = `<p class='text-danger-600 m-0'>${err instanceof Error ? err.message : "Could not load application status."}</p>`;
     }
   }
 
   checkBtn?.addEventListener("click", () => {
     const email = getSharedEmail();
-    if (!email) return;
-    void showStatus(email, { scroll: true });
+    void refreshStatus({ scroll: true, email: email || undefined });
   });
 
   form?.addEventListener("submit", async (e) => {
@@ -120,13 +141,19 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
     successBanner?.classList.add("hidden");
 
     const fd = new FormData(form as HTMLFormElement);
-    const payload = {
+    const payload: Record<string, string | undefined> = {
       applicantEmail: String(fd.get("applicantEmail") ?? "").trim(),
       businessName: String(fd.get("businessName") ?? "").trim(),
       businessType: String(fd.get("businessType") ?? "product"),
       contactPhone: String(fd.get("contactPhone") ?? "").trim() || undefined,
       description: String(fd.get("description") ?? "").trim() || undefined,
+      turnstileToken: getTurnstileToken(),
     };
+
+    const firebaseIdToken = await getFirebaseIdToken();
+    if (firebaseIdToken) {
+      payload.firebaseIdToken = firebaseIdToken;
+    }
 
     try {
       const res = await fetch(`${apiBase}/seller/applications`, {
@@ -137,19 +164,27 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Application failed");
 
-      syncEmailFields(payload.applicantEmail);
-      await showStatus(payload.applicantEmail, { scroll: true, submitted: true });
+      if (data.statusAccessToken) {
+        saveApplicationStatusToken(data.statusAccessToken);
+      }
+
+      syncEmailFields(String(payload.applicantEmail));
+      await refreshStatus({
+        scroll: true,
+        submitted: true,
+        email: String(payload.applicantEmail),
+      });
 
       if (successBanner && data.application?.proposedVendorCode) {
         successBanner.innerHTML = `<p class="text-body font-semibold text-success-700 m-0">Application received</p>
-          <p class="text-body-sm text-success-700 mt-1 m-0">Proposed seller code: <code class="font-mono">${data.application.proposedVendorCode}</code>. We'll email you when HQ approves your store.</p>`;
+          <p class="text-body-sm text-success-700 mt-1 m-0">Proposed seller code: <code class="font-mono">${data.application.proposedVendorCode}</code>. Save this page — your status link is stored on this device.</p>`;
         successBanner.classList.remove("hidden");
       }
 
       (form as HTMLFormElement).reset();
       const emailField = document.getElementById("applicantEmail");
       if (emailField instanceof HTMLInputElement) {
-        emailField.value = payload.applicantEmail;
+        emailField.value = String(payload.applicantEmail);
       }
     } catch (err) {
       if (errorEl) {
@@ -159,7 +194,6 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
     }
   });
 
-  // Sync email across fields
   for (const id of ["applicantEmail", "check-email", "merchant-email"]) {
     const el = document.getElementById(id);
     el?.addEventListener("change", () => {
@@ -169,7 +203,7 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
   }
 
   if (storedEmail) {
-    void showStatus(storedEmail);
+    void refreshStatus({ email: storedEmail });
   }
 }
 
@@ -205,6 +239,7 @@ export function setupMerchantCredentials(apiBase = API_BASE): void {
         vendorInput.value = vendor.code;
       }
       saveMerchantSession(vendor.code, token, email || undefined);
+      await bindVendorToMember(apiBase, vendor.code);
       if (msg) {
         msg.textContent = `Saved for ${vendor.name} — you can use Listings, New listing, and Order queue.`;
         msg.className = "text-body-sm text-success-600 mt-2 m-0";

@@ -2,6 +2,10 @@ import { and, desc, eq } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { sellerApplications, vendors } from "../db/schema";
 import { slugify, vendorCodeFromName } from "../lib/slug";
+import {
+  generateStatusAccessToken,
+  hashStatusAccessToken,
+} from "../lib/status-access-token";
 import { generateVendorToken, hashVendorToken } from "../lib/vendor-token";
 
 export class SellerApplicationError extends Error {
@@ -24,7 +28,25 @@ export type SubmitSellerApplicationInput = {
   businessType: string;
   contactPhone?: string;
   description?: string;
+  applicantFirebaseUid?: string;
 };
+
+export type SellerApplicationRecord = ReturnType<typeof serializeApplication> & {
+  vendor?: { code: string; slug: string; name: string } | null;
+};
+
+async function loadVendorForApplication(
+  db: StoreDatabase,
+  vendorId: string | null,
+): Promise<{ code: string; slug: string; name: string } | null> {
+  if (!vendorId) return null;
+  const vendorRows = await db
+    .select({ code: vendors.code, slug: vendors.slug, name: vendors.name })
+    .from(vendors)
+    .where(eq(vendors.id, vendorId))
+    .limit(1);
+  return vendorRows[0] ?? null;
+}
 
 export async function submitSellerApplication(
   db: StoreDatabase,
@@ -52,6 +74,9 @@ export async function submitSellerApplication(
   }
 
   const proposedVendorCode = vendorCodeFromName(businessName);
+  const statusAccessToken = generateStatusAccessToken();
+  const statusTokenHash = await hashStatusAccessToken(statusAccessToken);
+
   const inserted = await db
     .insert(sellerApplications)
     .values({
@@ -61,11 +86,16 @@ export async function submitSellerApplication(
       contactPhone: input.contactPhone?.trim() || null,
       description: input.description?.trim() || null,
       proposedVendorCode,
+      applicantFirebaseUid: input.applicantFirebaseUid?.trim() || null,
+      statusTokenHash,
     })
     .returning();
 
   const row = inserted[0]!;
-  return serializeApplication(row);
+  return {
+    application: serializeApplication(row),
+    statusAccessToken,
+  };
 }
 
 export async function getSellerApplicationByEmail(db: StoreDatabase, email: string) {
@@ -80,16 +110,37 @@ export async function getSellerApplicationByEmail(db: StoreDatabase, email: stri
   const row = rows[0];
   if (!row) return null;
 
-  let vendor: { code: string; slug: string; name: string } | null = null;
-  if (row.vendorId) {
-    const vendorRows = await db
-      .select({ code: vendors.code, slug: vendors.slug, name: vendors.name })
-      .from(vendors)
-      .where(eq(vendors.id, row.vendorId))
-      .limit(1);
-    vendor = vendorRows[0] ?? null;
-  }
+  const vendor = await loadVendorForApplication(db, row.vendorId);
+  return { ...serializeApplication(row), vendor };
+}
 
+export async function getSellerApplicationByStatusToken(db: StoreDatabase, statusToken: string) {
+  const statusTokenHash = await hashStatusAccessToken(statusToken);
+  const rows = await db
+    .select()
+    .from(sellerApplications)
+    .where(eq(sellerApplications.statusTokenHash, statusTokenHash))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const vendor = await loadVendorForApplication(db, row.vendorId);
+  return { ...serializeApplication(row), vendor };
+}
+
+export async function getSellerApplicationByFirebaseUid(db: StoreDatabase, firebaseUid: string) {
+  const rows = await db
+    .select()
+    .from(sellerApplications)
+    .where(eq(sellerApplications.applicantFirebaseUid, firebaseUid.trim()))
+    .orderBy(desc(sellerApplications.createdAt))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const vendor = await loadVendorForApplication(db, row.vendorId);
   return { ...serializeApplication(row), vendor };
 }
 
@@ -161,6 +212,7 @@ export async function approveSellerApplication(
       ownerEmail: application.applicantEmail,
       description: application.description,
       apiTokenHash,
+      firebaseUid: application.applicantFirebaseUid,
     })
     .returning();
 
@@ -184,7 +236,6 @@ export async function approveSellerApplication(
       slug: vendor.slug,
       name: vendor.name,
     },
-    /** Plaintext access token — share with seller once; not stored in DB. */
     accessToken,
   };
 }
@@ -232,6 +283,7 @@ function serializeApplication(row: typeof sellerApplications.$inferSelect) {
     status: row.status,
     vendorId: row.vendorId,
     reviewNotes: row.reviewNotes,
+    hasFirebaseLink: Boolean(row.applicantFirebaseUid),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

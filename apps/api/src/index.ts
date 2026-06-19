@@ -8,6 +8,7 @@ import {
   patchApproveApplication,
   patchApproveListing,
   patchRejectApplication,
+  patchRotateVendorToken,
 } from "./routes/admin-merchants";
 import {
   adminAuth,
@@ -24,9 +25,12 @@ import {
   postMerchantListing,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
+import { getMemberMerchantContext } from "./routes/member-merchant";
 import {
   getSellerApplicationStatus,
+  postMerchantBindFirebase,
   postSellerApplication,
+  postSellerApplicationStatus,
 } from "./routes/seller-applications";
 import { getStorefront } from "./routes/storefront";
 import { postCheckout } from "./routes/checkout";
@@ -57,7 +61,10 @@ app.get("/", (c) =>
       "GET /orders?email=",
       "GET /members/store-patronage?email=",
       "POST /seller/applications",
+      "POST /seller/applications/status",
       "GET /seller/applications",
+      "POST /merchant/bind-firebase",
+      "GET /members/merchant-context",
       "GET /merchant/session",
       "GET /merchant/listings",
       "POST /merchant/listings",
@@ -70,6 +77,7 @@ app.get("/", (c) =>
       "PATCH /admin/seller-applications/:id/approve",
       "PATCH /admin/seller-applications/:id/reject",
       "PATCH /admin/listings/:vendorCode/:sku/approve",
+      "PATCH /admin/vendors/:code/rotate-token",
       "GET /dev/fixtures",
       "POST /webhooks/paymongo",
     ],
@@ -104,9 +112,12 @@ app.post("/checkout", (c) => postCheckout(c));
 app.get("/orders", (c) => getOrdersByEmail(c));
 app.get("/orders/:id", (c) => getOrder(c));
 app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));
+app.get("/members/merchant-context", (c) => getMemberMerchantContext(c));
 
 app.post("/seller/applications", (c) => postSellerApplication(c));
+app.post("/seller/applications/status", (c) => postSellerApplicationStatus(c));
 app.get("/seller/applications", (c) => getSellerApplicationStatus(c));
+app.post("/merchant/bind-firebase", (c) => postMerchantBindFirebase(c));
 
 const merchant = new Hono<{ Bindings: WorkerEnv; Variables: MerchantVariables }>();
 merchant.use("*", merchantAuth());
@@ -127,6 +138,7 @@ admin.get("/listings/pending", (c) => getAdminPendingListings(c));
 admin.patch("/seller-applications/:id/approve", (c) => patchApproveApplication(c));
 admin.patch("/seller-applications/:id/reject", (c) => patchRejectApplication(c));
 admin.patch("/listings/:vendorCode/:sku/approve", (c) => patchApproveListing(c));
+admin.patch("/vendors/:code/rotate-token", (c) => patchRotateVendorToken(c));
 app.route("/admin", admin);
 
 app.get("/dev/fixtures", (c) => getDevFixtures(c));

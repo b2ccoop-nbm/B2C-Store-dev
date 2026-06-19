@@ -5,6 +5,8 @@ import Card from "@/components/atoms/Card.astro";
 import Input from "@/components/atoms/Input.astro";
 import Select from "@/components/atoms/Select.astro";
 import Textarea from "@/components/atoms/Textarea.astro";
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 ---
 
 <DashboardLayout title="Apply to sell" section="sell">
@@ -12,6 +14,7 @@ import Textarea from "@/components/atoms/Textarea.astro";
     <h1 class="text-display m-0">Seller application</h1>
     <p class="text-body-sm text-neutral-500 mt-2 m-0">
       Join the B2CCoop marketplace. Officers review applications before you can publish listings.
+      <a href="/profile" class="text-brand-600 font-semibold">Sign in</a> with your member account to link your application automatically.
     </p>
   </header>
 
@@ -44,6 +47,11 @@ import Textarea from "@/components/atoms/Textarea.astro";
         hint="Philippine mobile, e.g. 09XX XXX XXXX"
       />
       <Textarea id="description" name="description" label="Tell us about your business" rows={4} hint="What you sell, where you're based, coop membership if any." />
+      {
+        turnstileSiteKey && (
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} id="apply-turnstile" />
+        )
+      }
       <Button type="submit" variant="primary">Submit application</Button>
       <p id="application-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
     </form>
@@ -52,7 +60,12 @@ import Textarea from "@/components/atoms/Textarea.astro";
   <div id="application-status-card">
     <Card class="max-w-xl mb-8">
       <h2 class="text-title m-0 mb-4">Application status</h2>
-      <p class="text-body-sm text-neutral-500 m-0 mb-4">Check progress with the same email you used to apply.</p>
+      <p class="text-body-sm text-neutral-500 m-0 mb-4">Sign in on <a href="/profile" class="text-brand-600 font-semibold">Your profile</a> for automatic status, or check by email below.</p>
+      {
+        turnstileSiteKey && (
+          <div class="cf-turnstile mb-4" data-sitekey={turnstileSiteKey} id="status-turnstile" />
+        )
+      }
       <Input id="check-email" name="checkEmail" type="email" label="Your email" autocomplete="email" />
       <Button type="button" variant="secondary" id="check-application" class="mt-4">Check status</Button>
       <div id="application-status" class="hidden mt-4 p-4 rounded-lg bg-neutral-50 border border-neutral-100" />
@@ -89,6 +102,10 @@ import Textarea from "@/components/atoms/Textarea.astro";
     </Card>
   </div>
 </DashboardLayout>
+
+{turnstileSiteKey && (
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />
+)}
 
 <script>
   import { setupMerchantCredentials, setupSellerApplicationForm } from "@/scripts/seller-application";

@@ -27,6 +27,8 @@ APP_RES=$(curl -sS -X POST "$API_BASE/seller/applications" \
   -d "{\"applicantEmail\":\"$EMAIL\",\"businessName\":\"$BUSINESS\",\"businessType\":\"farm\",\"description\":\"Automated smoke test\"}")
 echo "$APP_RES" | python3 -m json.tool
 APP_ID=$(echo "$APP_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['application']['applicationId'])")
+STATUS_TOKEN=$(echo "$APP_RES" | python3 -c "import sys,json; print(json.load(sys.stdin).get('statusAccessToken',''))")
+echo "Status token issued: ${STATUS_TOKEN:0:20}..."
 
 echo "== 2. Approve seller =="
 APPROVE_RES=$(curl -sS -X PATCH "$API_BASE/admin/seller-applications/$APP_ID/approve" \

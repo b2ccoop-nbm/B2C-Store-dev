@@ -2,6 +2,7 @@
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import Button from "@/components/atoms/Button.astro";
 import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
 import PersonaSwitcher from "@/components/organisms/shell/PersonaSwitcher.astro";
 ---
 
@@ -23,14 +24,36 @@ import PersonaSwitcher from "@/components/organisms/shell/PersonaSwitcher.astro"
       </div>
     </Card>
 
-    <Card>
-      <h2 class="text-title-sm m-0 mb-2">Sign in</h2>
-      <p class="text-body-sm text-neutral-500 m-0 mb-4">
-        Member sign-in and settings are coming soon. You can shop and checkout as a guest today.
+    <Card id="member-signed-in-panel" class="hidden">
+      <h2 class="text-title-sm m-0 mb-2">Signed in</h2>
+      <p class="text-body-sm text-neutral-900 m-0 mb-2">
+        <span id="member-signed-in-email" class="font-semibold" />
       </p>
-      <div class="flex justify-center">
+      <p id="member-merchant-hint" class="hidden text-body-sm text-merchant-700 bg-merchant-50 border border-merchant-200 rounded-lg px-3 py-2 mb-4 m-0" />
+      <Button type="button" variant="secondary" id="member-sign-out-btn" fullWidth>Sign out</Button>
+    </Card>
+
+    <Card id="member-sign-in-panel">
+      <h2 class="text-title-sm m-0 mb-2">Member sign-in</h2>
+      <p class="text-body-sm text-neutral-500 m-0 mb-4">
+        Use the same Firebase account as the B2CCoop member portal. Signing in links your seller application and store.
+      </p>
+      <div class="flex flex-col gap-3">
+        <Input id="member-sign-in-email" name="email" type="email" label="Email" autocomplete="email" />
+        <Input id="member-sign-in-password" name="password" type="password" label="Password" autocomplete="current-password" />
+        <Button type="button" variant="primary" id="member-sign-in-btn" fullWidth>Sign in</Button>
+        <Button type="button" variant="secondary" id="member-google-sign-in-btn" fullWidth>Continue with Google</Button>
+        <p id="member-sign-in-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
+      </div>
+      <div class="flex justify-center mt-6 pt-4 border-t border-neutral-100">
         <PersonaSwitcher />
       </div>
     </Card>
   </div>
 </MarketplaceLayout>
+
+<script>
+  import { setupMemberSignIn } from "@/scripts/member-sign-in";
+  import { API_BASE } from "@/lib/api";
+  setupMemberSignIn(API_BASE);
+</script>

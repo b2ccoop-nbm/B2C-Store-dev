@@ -1,4 +1,6 @@
 import { API_BASE } from "@/lib/api";
+import { getApplicationStatusToken } from "@/lib/application-status";
+import { getFirebaseIdToken, getStoredMemberEmail } from "@/lib/member-auth";
 import {
   getMerchantEmail,
   hasMerchantSession,
@@ -34,12 +36,41 @@ export const ONBOARDING_STEPS: ReadonlyArray<{ id: OnboardingStep; label: string
   { id: "live", label: "Live" },
 ];
 
+export type FetchApplicationOptions = {
+  email?: string;
+  statusToken?: string;
+  firebaseIdToken?: string;
+  turnstileToken?: string;
+};
+
 export async function fetchSellerApplication(
   apiBase: string,
-  email: string,
+  options: FetchApplicationOptions = {},
 ): Promise<SellerApplication | null> {
-  const res = await fetch(`${apiBase}/seller/applications?email=${encodeURIComponent(email)}`);
+  const statusToken = options.statusToken ?? getApplicationStatusToken();
+  const firebaseIdToken = options.firebaseIdToken ?? (await getFirebaseIdToken()) ?? undefined;
+  const email =
+    options.email ?? (getMerchantEmail() || getStoredMemberEmail() || undefined);
+
+  if (!statusToken && !firebaseIdToken && !email) {
+    return null;
+  }
+
+  const body: Record<string, string> = {};
+  if (statusToken) body.statusToken = statusToken;
+  if (firebaseIdToken) body.firebaseIdToken = firebaseIdToken;
+  if (email) body.email = email;
+  if (options.turnstileToken) body.turnstileToken = options.turnstileToken;
+
+  const res = await fetch(`${apiBase}/seller/applications/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error ?? "Could not load application");
+  }
   if (!data.found) return null;
   return data.application as SellerApplication;
 }
@@ -86,17 +117,9 @@ export function renderOnboardingStepper(current: OnboardingStep): string {
 }
 
 export async function loadOnboardingContext(apiBase = API_BASE) {
-  const email = getMerchantEmail();
-  if (!email) {
-    return {
-      email: "",
-      application: null as SellerApplication | null,
-      step: "apply" as OnboardingStep,
-      canSell: false,
-    };
-  }
+  const application = await fetchSellerApplication(apiBase).catch(() => null);
+  const email = application?.applicantEmail ?? getMerchantEmail() ?? getStoredMemberEmail();
 
-  const application = await fetchSellerApplication(apiBase, email);
   let listingSummary: { hasActive: boolean; hasPending: boolean } | undefined;
 
   if (application?.status === "APPROVED" && hasMerchantSession()) {

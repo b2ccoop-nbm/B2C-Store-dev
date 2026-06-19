@@ -113,9 +113,27 @@ export const sellerApplicationRequestSchema = z.object({
   businessType: z.enum(["product", "service", "farm", "food"]).default("product"),
   contactPhone: z.string().min(7).max(32).optional(),
   description: z.string().max(2000).optional(),
+  turnstileToken: z.string().min(1).max(2048).optional(),
+  /** When set, applicant email must match the verified Firebase account. */
+  firebaseIdToken: z.string().min(1).max(8192).optional(),
 });
 
 export type SellerApplicationRequest = z.infer<typeof sellerApplicationRequestSchema>;
+
+export const sellerApplicationStatusRequestSchema = z.object({
+  email: z.string().email().max(255).optional(),
+  statusToken: z.string().min(1).max(128).optional(),
+  firebaseIdToken: z.string().min(1).max(8192).optional(),
+  turnstileToken: z.string().min(1).max(2048).optional(),
+});
+
+export type SellerApplicationStatusRequest = z.infer<typeof sellerApplicationStatusRequestSchema>;
+
+export const merchantBindFirebaseRequestSchema = z.object({
+  firebaseIdToken: z.string().min(1).max(8192),
+});
+
+export type MerchantBindFirebaseRequest = z.infer<typeof merchantBindFirebaseRequestSchema>;
 
 export const listingStatusSchema = z.enum(["DRAFT", "PENDING_REVIEW", "ACTIVE", "REJECTED"]);
 export type ListingStatus = z.infer<typeof listingStatusSchema>;

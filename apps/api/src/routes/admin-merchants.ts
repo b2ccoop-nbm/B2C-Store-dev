@@ -11,6 +11,7 @@ import {
   listPendingReviewListings,
   MerchantListingError,
 } from "../services/merchant-listings";
+import { rotateVendorToken, VendorError } from "../services/vendors";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
 export async function getAdminPendingApplications(c: Context<{ Bindings: WorkerEnv }>) {
@@ -115,6 +116,31 @@ export async function patchApproveListing(c: Context<{ Bindings: WorkerEnv }>) {
     return c.json({ ok: true, listing });
   } catch (err) {
     if (err instanceof MerchantListingError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function patchRotateVendorToken(c: Context<{ Bindings: WorkerEnv }>) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = c.req.param("code");
+  if (!vendorCode) {
+    return c.json({ error: "Vendor code required" }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const result = await rotateVendorToken(db, vendorCode);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof VendorError) {
       return c.json({ error: err.message }, err.status);
     }
     throw err;

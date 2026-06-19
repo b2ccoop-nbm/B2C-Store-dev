@@ -232,6 +232,54 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   loadAppsBtn?.addEventListener("click", () => void loadApplications());
   loadListingsBtn?.addEventListener("click", () => void loadListings());
 
+  const rotateBtn = document.getElementById("rotate-vendor-token");
+  const rotateCodeInput = document.getElementById("rotate-vendor-code");
+  const rotateMsg = document.getElementById("rotate-token-msg");
+
+  rotateBtn?.addEventListener("click", async () => {
+    const secret = getSecret();
+    const vendorCode =
+      rotateCodeInput instanceof HTMLInputElement ? rotateCodeInput.value.trim() : "";
+    if (!secret) {
+      if (errorEl) {
+        errorEl.textContent = "Enter staff secret";
+        errorEl.classList.remove("hidden");
+      }
+      return;
+    }
+    if (!vendorCode) {
+      if (rotateMsg) {
+        rotateMsg.textContent = "Enter vendor code";
+        rotateMsg.className = "text-body-sm text-danger-600 mt-3 m-0";
+        rotateMsg.classList.remove("hidden");
+      }
+      return;
+    }
+
+    if (rotateBtn instanceof HTMLButtonElement) rotateBtn.disabled = true;
+    try {
+      const res = await fetch(
+        `${apiBase}/admin/vendors/${encodeURIComponent(vendorCode)}/rotate-token`,
+        { method: "PATCH", headers: { Authorization: `Bearer ${secret}` } },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Rotate failed");
+      if (rotateMsg) {
+        rotateMsg.innerHTML = `New token for <strong>${data.vendor.name}</strong>:<br><code class="font-mono text-caption break-all">${data.accessToken}</code>`;
+        rotateMsg.className = "text-body-sm text-success-600 mt-3 m-0";
+        rotateMsg.classList.remove("hidden");
+      }
+    } catch (err) {
+      if (rotateMsg) {
+        rotateMsg.textContent = err instanceof Error ? err.message : "Rotate failed";
+        rotateMsg.className = "text-body-sm text-danger-600 mt-3 m-0";
+        rotateMsg.classList.remove("hidden");
+      }
+    } finally {
+      if (rotateBtn instanceof HTMLButtonElement) rotateBtn.disabled = false;
+    }
+  });
+
   if (getSecret()) {
     void loadApplications();
     void loadListings();
