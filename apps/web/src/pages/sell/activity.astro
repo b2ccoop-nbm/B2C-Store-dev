@@ -12,9 +12,9 @@ import Card from "@/components/atoms/Card.astro";
     </p>
   </header>
 
-  <Card class="max-w-2xl mb-6">
+  <Card class="max-w-2xl mb-6" id="merchant-queue-panel">
     <p class="text-body-sm text-neutral-500 m-0 mb-4">
-      Uses your saved vendor code and staff secret from
+      Uses your saved access token from
       <a href="/sell/apply" class="text-brand-600 font-semibold">Seller application</a>.
       Officers can also use the <a href="/admin" class="text-brand-600 font-semibold">global pickup queue</a>.
     </p>
@@ -27,6 +27,8 @@ import Card from "@/components/atoms/Card.astro";
 
 <script>
   import { setupMerchantQueue } from "@/scripts/merchant-queue";
+  import { setupMerchantPageGate } from "@/scripts/merchant-page-gate";
   import { API_BASE } from "@/lib/api";
+  setupMerchantPageGate(API_BASE, { containerId: "merchant-queue-panel" });
   setupMerchantQueue(API_BASE);
 </script>

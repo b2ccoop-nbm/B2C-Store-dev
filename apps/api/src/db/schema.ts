@@ -48,6 +48,8 @@ export const vendors = pgTable("vendors", {
   email: varchar("email", { length: 255 }),
   ownerEmail: varchar("owner_email", { length: 255 }),
   description: text("description"),
+  /** SHA-256 hex of per-vendor API access token (plaintext shown once on approval). */
+  apiTokenHash: varchar("api_token_hash", { length: 64 }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

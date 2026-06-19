@@ -11,6 +11,7 @@ const { activePath } = Astro.props;
 const shopLinks = [
   { label: "Products", href: "/category/products" },
   { label: "Services", href: "/category/services" },
+  { label: "Sell with us", href: "/sell" },
 ];
 ---
 
@@ -27,9 +28,13 @@ const shopLinks = [
             href={link.href}
             class:list={[
               "touch-target inline-flex items-center px-3 rounded-lg text-body-sm font-medium no-underline",
-              activePath.startsWith("/category")
-                ? "text-brand-600 bg-brand-50"
-                : "text-neutral-900 hover:bg-neutral-50",
+              link.href === "/sell"
+                ? activePath.startsWith("/sell")
+                  ? "text-merchant-600 bg-merchant-50"
+                  : "text-neutral-900 hover:bg-neutral-50"
+                : activePath.startsWith("/category")
+                  ? "text-brand-600 bg-brand-50"
+                  : "text-neutral-900 hover:bg-neutral-50",
             ]}
           >
             {link.label}

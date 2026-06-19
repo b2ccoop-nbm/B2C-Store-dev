@@ -13,10 +13,10 @@ import Card from "@/components/atoms/Card.astro";
     <Button href="/sell/new" variant="primary">New listing</Button>
   </header>
 
-  <Card>
+  <Card id="listings-panel">
     <Button type="button" variant="secondary" id="load-listings">Load listings</Button>
     <p class="text-caption text-neutral-500 mt-2 m-0">
-      Requires merchant session — <a href="/sell/apply" class="text-brand-600">set credentials</a>
+      Requires saved access token — <a href="/sell/apply" class="text-brand-600">set credentials</a>
     </p>
     <p id="listings-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
     <div id="listings-table" class="mt-6" />
@@ -25,6 +25,8 @@ import Card from "@/components/atoms/Card.astro";
 
 <script>
   import { setupMerchantListings } from "@/scripts/merchant-listings";
+  import { setupMerchantPageGate } from "@/scripts/merchant-page-gate";
   import { API_BASE } from "@/lib/api";
+  setupMerchantPageGate(API_BASE, { containerId: "listings-panel" });
   setupMerchantListings(API_BASE);
 </script>

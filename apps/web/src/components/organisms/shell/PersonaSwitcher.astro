@@ -81,6 +81,9 @@ import Avatar from "@/components/atoms/Avatar.astro";
         $persona.set(id);
         close();
         window.dispatchEvent(new CustomEvent("persona-change", { detail: { persona: id } }));
+        if (id === "merchant") {
+          window.location.href = "/sell";
+        }
       });
     });
 

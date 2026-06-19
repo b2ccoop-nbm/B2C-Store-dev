@@ -6,6 +6,7 @@ interface Props {
   elevation?: 1 | 2 | 3;
   class?: string;
   as?: "div" | "article" | "section";
+  id?: string;
 }
 
 const {
@@ -13,6 +14,7 @@ const {
   elevation = 1,
   class: className,
   as: Tag = "div",
+  id,
 }: Props = Astro.props;
 
 const paddingMap: Record<NonNullable<Props["padding"]>, string> = {
@@ -33,6 +35,6 @@ const elevationClass = elevationMap[elevation];
 const classes = cn(elevationClass, paddingClass, className);
 ---
 
-<Tag class={classes}>
+<Tag class={classes} id={id}>
   <slot />
 </Tag>

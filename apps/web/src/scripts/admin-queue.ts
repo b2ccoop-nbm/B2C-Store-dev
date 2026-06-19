@@ -1,13 +1,36 @@
-export function setupAdminQueue(apiBase: string): void {
+import { API_BASE } from "@/lib/api";
+
+const ADMIN_SECRET_KEY = "b2c_admin_secret";
+
+function getSecretInput(): HTMLInputElement | null {
+  const input = document.getElementById("admin-secret");
+  return input instanceof HTMLInputElement ? input : null;
+}
+
+function getSecret(): string {
+  return getSecretInput()?.value.trim() ?? "";
+}
+
+function persistSecret(secret: string): void {
+  if (secret) sessionStorage.setItem(ADMIN_SECRET_KEY, secret);
+}
+
+function restoreSecret(): void {
+  const stored = sessionStorage.getItem(ADMIN_SECRET_KEY);
+  const input = getSecretInput();
+  if (stored && input && !input.value) {
+    input.value = stored;
+  }
+}
+
+export function setupAdminQueue(apiBase = API_BASE): void {
   const loadBtn = document.getElementById("load-pending");
-  const secretInput = document.getElementById("admin-secret");
+  const secretInput = getSecretInput();
   const list = document.getElementById("order-list");
   const loadError = document.getElementById("admin-load-error");
 
-  function getSecret(): string {
-    if (secretInput instanceof HTMLInputElement) return secretInput.value.trim();
-    return "";
-  }
+  restoreSecret();
+  secretInput?.addEventListener("change", () => persistSecret(getSecret()));
 
   async function confirmOrder(orderId: string) {
     const secret = getSecret();
@@ -21,7 +44,7 @@ export function setupAdminQueue(apiBase: string): void {
     return data;
   }
 
-  loadBtn?.addEventListener("click", async () => {
+  async function loadPending() {
     const secret = getSecret();
     loadError?.classList.add("hidden");
     if (!secret) {
@@ -31,6 +54,7 @@ export function setupAdminQueue(apiBase: string): void {
       }
       return;
     }
+    persistSecret(secret);
 
     if (!list) return;
 
@@ -82,7 +106,7 @@ export function setupAdminQueue(apiBase: string): void {
               msg.className = "text-body-sm mt-2 m-0 text-success-600 b2c-confirm-msg";
               msg.classList.remove("hidden");
             }
-            setTimeout(() => loadBtn?.click(), 1000);
+            setTimeout(() => void loadPending(), 1000);
           } catch (err) {
             if (msg) {
               msg.textContent = err instanceof Error ? err.message : "Failed";
@@ -99,5 +123,11 @@ export function setupAdminQueue(apiBase: string): void {
         loadError.classList.remove("hidden");
       }
     }
-  });
+  }
+
+  loadBtn?.addEventListener("click", () => void loadPending());
+
+  if (getSecret()) {
+    void loadPending();
+  }
 }

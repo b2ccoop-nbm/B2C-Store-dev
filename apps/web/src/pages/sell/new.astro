@@ -25,7 +25,7 @@ const categories = [
     <Button href="/sell/apply" variant="ghost" size="sm">Set merchant credentials</Button>
   </header>
 
-  <Card class="max-w-xl">
+  <Card class="max-w-xl" id="listing-wizard-panel">
     <div id="wizard-step-1" class="flex flex-col gap-4">
       <p class="text-body-sm text-neutral-500 m-0">What are you listing? (Product only for MVP)</p>
       <Input id="listing-name" name="name" type="text" label="Product name" required placeholder="Organic brown rice 5kg" />
@@ -70,6 +70,8 @@ const categories = [
 
 <script>
   import { setupListingWizard } from "@/scripts/listing-wizard";
+  import { setupMerchantPageGate } from "@/scripts/merchant-page-gate";
   import { API_BASE } from "@/lib/api";
+  setupMerchantPageGate(API_BASE, { containerId: "listing-wizard-panel" });
   setupListingWizard(API_BASE);
 </script>

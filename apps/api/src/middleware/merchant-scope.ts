@@ -1,16 +1,16 @@
 import type { Context, Next } from "hono";
-import type { WorkerEnv } from "../env";
 
-export function requireVendorCode() {
-  return async (c: Context<{ Bindings: WorkerEnv }>, next: Next) => {
-    const vendorCode = c.req.header("X-Vendor-Code")?.trim();
+/** Vendor code is set by merchantAuth middleware from token or legacy header. */
+export function requireMerchantVendor() {
+  return async (c: Context, next: Next) => {
+    const vendorCode = (c.get("vendorCode") as string | undefined)?.trim();
     if (!vendorCode) {
-      return c.json({ error: "X-Vendor-Code header required" }, 400);
+      return c.json({ error: "Vendor context missing" }, 401);
     }
     await next();
   };
 }
 
 export function getVendorCode(c: Context): string {
-  return c.req.header("X-Vendor-Code")?.trim() ?? "";
+  return (c.get("vendorCode") as string | undefined) ?? "";
 }

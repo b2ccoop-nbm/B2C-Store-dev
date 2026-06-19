@@ -17,8 +17,10 @@ import {
 import {
   getMerchantListings,
   getMerchantPendingOrders,
+  getMerchantSession,
   merchantAuth,
   merchantVendorScope,
+  patchMerchantConfirmPickup,
   postMerchantListing,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
@@ -33,6 +35,7 @@ import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activ
 import { getOrder } from "./routes/orders";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
+import type { MerchantVariables } from "./middleware/vendor-auth";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
 
@@ -55,9 +58,11 @@ app.get("/", (c) =>
       "GET /members/store-patronage?email=",
       "POST /seller/applications",
       "GET /seller/applications",
+      "GET /merchant/session",
       "GET /merchant/listings",
       "POST /merchant/listings",
       "GET /merchant/orders/pending",
+      "PATCH /merchant/orders/:id/confirm-pickup",
       "GET /admin/orders/pending",
       "PATCH /admin/orders/:id/confirm-pickup",
       "GET /admin/seller-applications",
@@ -103,12 +108,14 @@ app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));
 app.post("/seller/applications", (c) => postSellerApplication(c));
 app.get("/seller/applications", (c) => getSellerApplicationStatus(c));
 
-const merchant = new Hono<{ Bindings: WorkerEnv }>();
-merchant.use("*", merchantAuth);
+const merchant = new Hono<{ Bindings: WorkerEnv; Variables: MerchantVariables }>();
+merchant.use("*", merchantAuth());
 merchant.use("*", merchantVendorScope);
+merchant.get("/session", (c) => getMerchantSession(c));
 merchant.get("/listings", (c) => getMerchantListings(c));
 merchant.post("/listings", (c) => postMerchantListing(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
+merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));
 app.route("/merchant", merchant);
 
 const admin = new Hono<{ Bindings: WorkerEnv }>();

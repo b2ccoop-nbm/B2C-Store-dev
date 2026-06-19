@@ -8,11 +8,9 @@ export function setupMerchantQueue(apiBase = API_BASE): void {
   const vendorLabel = document.getElementById("merchant-vendor-label");
 
   async function confirmOrder(orderId: string) {
-    const headers = merchantHeaders();
-    const secret = (headers as Record<string, string>).Authorization?.replace("Bearer ", "") ?? "";
-    const res = await fetch(`${apiBase}/admin/orders/${orderId}/confirm-pickup`, {
+    const res = await fetch(`${apiBase}/merchant/orders/${orderId}/confirm-pickup`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${secret}` },
+      headers: merchantHeaders(),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Confirm failed");

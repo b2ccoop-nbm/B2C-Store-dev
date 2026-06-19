@@ -29,19 +29,24 @@ echo "$APP_RES" | python3 -m json.tool
 APP_ID=$(echo "$APP_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['application']['applicationId'])")
 
 echo "== 2. Approve seller =="
-curl -sS -X PATCH "$API_BASE/admin/seller-applications/$APP_ID/approve" \
+APPROVE_RES=$(curl -sS -X PATCH "$API_BASE/admin/seller-applications/$APP_ID/approve" \
   -H "Authorization: Bearer $ADMIN_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{}' | python3 -m json.tool
+  -d '{}')
+echo "$APPROVE_RES" | python3 -m json.tool
 
-VENDOR_CODE=$(curl -sS "$API_BASE/seller/applications?email=$EMAIL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['application']['vendor']['code'])")
-SLUG=$(curl -sS "$API_BASE/seller/applications?email=$EMAIL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['application']['vendor']['slug'])")
+VENDOR_TOKEN=$(echo "$APPROVE_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
+VENDOR_CODE=$(echo "$APPROVE_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['vendor']['code'])")
+SLUG=$(echo "$APPROVE_RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['vendor']['slug'])")
 echo "Vendor: $VENDOR_CODE slug: $SLUG"
+
+echo "== 2b. Verify merchant session =="
+curl -sS "$API_BASE/merchant/session" \
+  -H "Authorization: Bearer $VENDOR_TOKEN" | python3 -m json.tool
 
 echo "== 3. Create listing =="
 LIST_RES=$(curl -sS -X POST "$API_BASE/merchant/listings" \
-  -H "Authorization: Bearer $ADMIN_SECRET" \
-  -H "X-Vendor-Code: $VENDOR_CODE" \
+  -H "Authorization: Bearer $VENDOR_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"sku\":\"$SKU\",\"name\":\"Smoke Test Honey\",\"category\":\"Produce\",\"unitPrice\":\"99.00\",\"patronagePerUnit\":\"2.00\",\"submitForReview\":true}")
 echo "$LIST_RES" | python3 -m json.tool

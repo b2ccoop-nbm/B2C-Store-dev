@@ -17,11 +17,9 @@
       "breakpoints": true
     },
     {
-      "idx": 2,
+      "idx": 3,
       "version": "7",
-      "when": 1780998000000,
-      "tag": "0002_merchant_layer",
+      "when": 1781001600000,
+      "tag": "0003_vendor_api_tokens",
       "breakpoints": true
     }
-  ]
-}

@@ -17,7 +17,7 @@ function isActive(href: string, path: string): boolean {
   class="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-neutral-200 bg-neutral-0/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
   aria-label="Primary"
 >
-  <ul class="grid grid-cols-5 m-0 p-0 list-none">
+  <ul class="grid grid-cols-6 m-0 p-0 list-none">
     {
       BOTTOM_NAV.map((item) => {
         const active = isActive(item.href, activePath);
@@ -58,6 +58,13 @@ function isActive(href: string, path: string): boolean {
                     aria-hidden="true"
                   />
                 </span>
+              )}
+              {item.id === "sell" && (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                  <path d="M3 9l2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.79 1.1L21 9" />
+                  <path d="M12 3v6" />
+                </svg>
               )}
               {item.id === "messages" && (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

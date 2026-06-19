@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { sellerApplications, vendors } from "../db/schema";
 import { slugify, vendorCodeFromName } from "../lib/slug";
+import { generateVendorToken, hashVendorToken } from "../lib/vendor-token";
 
 export class SellerApplicationError extends Error {
   constructor(
@@ -147,6 +148,9 @@ export async function approveSellerApplication(
   const baseSlug = slugify(application.businessName);
   const slug = await uniqueVendorSlug(db, baseSlug);
 
+  const accessToken = generateVendorToken();
+  const apiTokenHash = await hashVendorToken(accessToken);
+
   const vendorInserted = await db
     .insert(vendors)
     .values({
@@ -156,6 +160,7 @@ export async function approveSellerApplication(
       email: application.applicantEmail,
       ownerEmail: application.applicantEmail,
       description: application.description,
+      apiTokenHash,
     })
     .returning();
 
@@ -179,6 +184,8 @@ export async function approveSellerApplication(
       slug: vendor.slug,
       name: vendor.name,
     },
+    /** Plaintext access token — share with seller once; not stored in DB. */
+    accessToken,
   };
 }
 

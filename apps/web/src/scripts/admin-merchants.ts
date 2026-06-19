@@ -1,8 +1,26 @@
 import { API_BASE } from "@/lib/api";
 
-function getSecret(): string {
+const ADMIN_SECRET_KEY = "b2c_admin_secret";
+
+function getSecretInput(): HTMLInputElement | null {
   const input = document.getElementById("admin-secret");
-  return input instanceof HTMLInputElement ? input.value.trim() : "";
+  return input instanceof HTMLInputElement ? input : null;
+}
+
+function getSecret(): string {
+  return getSecretInput()?.value.trim() ?? "";
+}
+
+function persistSecret(secret: string): void {
+  if (secret) sessionStorage.setItem(ADMIN_SECRET_KEY, secret);
+}
+
+function restoreSecret(): void {
+  const stored = sessionStorage.getItem(ADMIN_SECRET_KEY);
+  const input = getSecretInput();
+  if (stored && input && !input.value) {
+    input.value = stored;
+  }
 }
 
 export function setupAdminMerchants(apiBase = API_BASE): void {
@@ -11,8 +29,12 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   const loadListingsBtn = document.getElementById("load-pending-listings");
   const listingsPanel = document.getElementById("pending-listings-panel");
   const errorEl = document.getElementById("admin-merchants-error");
+  const secretInput = getSecretInput();
 
-  loadAppsBtn?.addEventListener("click", async () => {
+  restoreSecret();
+  secretInput?.addEventListener("change", () => persistSecret(getSecret()));
+
+  async function loadApplications() {
     errorEl?.classList.add("hidden");
     const secret = getSecret();
     if (!secret) {
@@ -22,6 +44,7 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
       }
       return;
     }
+    persistSecret(secret);
     if (!appsList) return;
     appsList.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
 
@@ -76,11 +99,14 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error ?? "Approve failed");
             if (msg) {
-              msg.textContent = `Approved — storefront /store/${data.vendor.slug}`;
+              const tokenNote = data.accessToken
+                ? `<br><span class="font-mono text-caption break-all">Access token (share with seller once): ${data.accessToken}</span>`
+                : "";
+              msg.innerHTML = `Approved — storefront <a href="/store/${data.vendor.slug}" class="text-brand-600 font-semibold">/store/${data.vendor.slug}</a>${tokenNote}`;
               msg.className = "text-body-sm mt-2 m-0 text-success-600 b2c-app-msg";
               msg.classList.remove("hidden");
             }
-            setTimeout(() => loadAppsBtn?.click(), 1200);
+            setTimeout(() => void loadApplications(), 2000);
           } catch (err) {
             if (msg) {
               msg.textContent = err instanceof Error ? err.message : "Failed";
@@ -111,7 +137,7 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
               msg.className = "text-body-sm mt-2 m-0 text-neutral-600 b2c-app-msg";
               msg.classList.remove("hidden");
             }
-            setTimeout(() => loadAppsBtn?.click(), 1200);
+            setTimeout(() => void loadApplications(), 1200);
           } catch (err) {
             if (msg) {
               msg.textContent = err instanceof Error ? err.message : "Failed";
@@ -127,9 +153,9 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         errorEl.classList.remove("hidden");
       }
     }
-  });
+  }
 
-  loadListingsBtn?.addEventListener("click", async () => {
+  async function loadListings() {
     const secret = getSecret();
     if (!secret) {
       if (errorEl) {
@@ -138,6 +164,7 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
       }
       return;
     }
+    persistSecret(secret);
     if (!listingsPanel) return;
     listingsPanel.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
 
@@ -200,5 +227,13 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         errorEl.classList.remove("hidden");
       }
     }
-  });
+  }
+
+  loadAppsBtn?.addEventListener("click", () => void loadApplications());
+  loadListingsBtn?.addEventListener("click", () => void loadListings());
+
+  if (getSecret()) {
+    void loadApplications();
+    void loadListings();
+  }
 }

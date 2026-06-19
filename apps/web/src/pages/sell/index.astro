@@ -10,6 +10,10 @@ import Card from "@/components/atoms/Card.astro";
     <p class="text-body-sm text-neutral-500 mt-2 m-0">Manage your storefront, listings, and order queue.</p>
   </header>
 
+  <div id="onboarding-stepper" aria-label="Seller onboarding progress" />
+
+  <p id="dashboard-gate-msg" class="hidden text-body-sm text-merchant-700 bg-merchant-50 border border-merchant-200 rounded-lg px-4 py-3 mb-6 m-0" role="status" />
+
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
     <Card>
       <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Start here</p>
@@ -17,26 +21,36 @@ import Card from "@/components/atoms/Card.astro";
       <p class="text-body-sm text-neutral-500 mt-2 m-0">Submit an application or check approval status.</p>
       <Button href="/sell/apply" variant="secondary" class="mt-4">Seller application</Button>
     </Card>
-    <Card>
-      <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Catalog</p>
-      <h2 class="text-title mt-2 m-0">List a product</h2>
-      <p class="text-body-sm text-neutral-500 mt-2 m-0">3-step wizard — details, price, review.</p>
-      <Button href="/sell/new" variant="primary" class="mt-4">New listing</Button>
-    </Card>
-    <Card>
-      <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Fulfillment</p>
-      <h2 class="text-title mt-2 m-0">Order queue</h2>
-      <p class="text-body-sm text-neutral-500 mt-2 m-0">Confirm pay-at-pickup orders for your store.</p>
-      <Button href="/sell/activity" variant="staff" class="mt-4">Open queue</Button>
-    </Card>
+    <div id="dashboard-catalog-card">
+      <Card>
+        <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Catalog</p>
+        <h2 class="text-title mt-2 m-0">List a product</h2>
+        <p class="text-body-sm text-neutral-500 mt-2 m-0">3-step wizard — details, price, review.</p>
+        <Button href="/sell/new" variant="primary" class="mt-4">New listing</Button>
+      </Card>
+    </div>
+    <div id="dashboard-queue-card">
+      <Card>
+        <p class="text-caption text-merchant-600 font-semibold uppercase m-0">Fulfillment</p>
+        <h2 class="text-title mt-2 m-0">Order queue</h2>
+        <p class="text-body-sm text-neutral-500 mt-2 m-0">Confirm pay-at-pickup orders for your store.</p>
+        <Button href="/sell/activity" variant="staff" class="mt-4">Open queue</Button>
+      </Card>
+    </div>
   </div>
 
   <Card>
     <h2 class="text-title m-0">Quick links</h2>
     <ul class="mt-4 space-y-2 text-body-sm m-0 pl-5">
       <li><a href="/sell/listings" class="text-brand-600 font-semibold">Your listings</a> — drafts and published products</li>
-      <li><a href="/sell/apply" class="text-brand-600 font-semibold">Merchant credentials</a> — vendor code + staff secret</li>
+      <li><a href="/sell/apply" class="text-brand-600 font-semibold">Store credentials</a> — vendor code + access token</li>
       <li><a href="/store/b2c-farm-fresh" class="text-brand-600 font-semibold">Example storefront</a> — B2C Farm Fresh Co-op</li>
     </ul>
   </Card>
 </DashboardLayout>
+
+<script>
+  import { setupMerchantDashboard } from "@/scripts/merchant-dashboard";
+  import { API_BASE } from "@/lib/api";
+  setupMerchantDashboard(API_BASE);
+</script>

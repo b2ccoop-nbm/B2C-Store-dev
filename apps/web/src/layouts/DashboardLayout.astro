@@ -52,9 +52,28 @@ const sellLinks = [
           }
         </nav>
       </aside>
-      <main id="main-content" class="min-h-[50vh]">
-        <slot />
-      </main>
+      <div>
+        <nav class="lg:hidden flex gap-2 overflow-x-auto pb-4 mb-4 -mx-1 px-1" aria-label="Merchant navigation">
+          {
+            sellLinks.map((link) => (
+              <a
+                href={link.href}
+                class={cn(
+                  "shrink-0 touch-target inline-flex items-center rounded-full px-4 py-2 text-body-sm font-medium no-underline border",
+                  activePath === link.href
+                    ? "bg-merchant-50 text-merchant-600 border-merchant-200"
+                    : "bg-neutral-0 text-neutral-700 border-neutral-200 hover:bg-neutral-50",
+                )}
+              >
+                {link.label}
+              </a>
+            ))
+          }
+        </nav>
+        <main id="main-content" class="min-h-[50vh]">
+          <slot />
+        </main>
+      </div>
     </div>
   </div>
   <TrustFooter />
