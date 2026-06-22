@@ -1,0 +1,60 @@
+---
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+import Select from "@/components/atoms/Select.astro";
+import Textarea from "@/components/atoms/Textarea.astro";
+---
+
+<DashboardLayout title="Store settings" section="sell">
+  <header class="mb-6">
+    <h1 class="text-display m-0">Store settings</h1>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Update your storefront profile. Description and contact details save immediately. Business name changes need coop officer approval.
+    </p>
+  </header>
+
+  <Card class="max-w-xl" id="merchant-settings-panel">
+    <p id="settings-loading" class="text-body-sm text-neutral-500 m-0">Loading store profile…</p>
+
+    <form id="merchant-settings-form" class="hidden flex flex-col gap-4">
+      <div class="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-body-sm">
+        <p class="m-0"><span class="text-neutral-500">Vendor code:</span> <code id="settings-vendor-code" class="font-mono font-semibold">—</code></p>
+        <p class="m-0 mt-1"><span class="text-neutral-500">Storefront:</span> <a id="settings-storefront-link" href="#" class="text-brand-600 font-semibold no-underline">/store/…</a></p>
+      </div>
+
+      <p id="settings-pending-name" class="hidden text-body-sm text-merchant-700 bg-merchant-50 border border-merchant-200 rounded-lg px-4 py-3 m-0" role="status" />
+
+      <Input id="settings-name" name="name" type="text" label="Business name" required />
+      <Select
+        id="settings-business-type"
+        name="businessType"
+        label="Business type"
+        required
+        options={[
+          { value: "product", label: "Products (goods)" },
+          { value: "food", label: "Food & beverages" },
+          { value: "farm", label: "Farm & produce" },
+          { value: "service", label: "Services" },
+        ]}
+      />
+      <Input id="settings-email" name="email" type="email" label="Store contact email" autocomplete="email" />
+      <Input id="settings-phone" name="contactPhone" type="tel" label="Contact phone" inputMode="tel" placeholder="09XX XXX XXXX" />
+      <Textarea id="settings-description" name="description" label="About your business" rows={4} hint="Shown on your public storefront." />
+
+      <p id="settings-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
+      <p id="settings-success" class="hidden text-body-sm text-success-600 m-0" role="status" />
+
+      <Button type="submit" variant="primary" id="settings-save">Save changes</Button>
+    </form>
+  </Card>
+</DashboardLayout>
+
+<script>
+  import { setupMerchantSettings } from "@/scripts/merchant-settings";
+  import { setupMerchantPageGate } from "@/scripts/merchant-page-gate";
+  import { API_BASE } from "@/lib/api";
+  setupMerchantPageGate(API_BASE, { containerId: "merchant-settings-panel" });
+  setupMerchantSettings(API_BASE);
+</script>

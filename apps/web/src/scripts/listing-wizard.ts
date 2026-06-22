@@ -27,13 +27,12 @@ function saveDraft(draft: Draft): void {
 
 export function setupListingWizard(apiBase = API_BASE): void {
   let step = 1;
-  const totalSteps = 3;
+  const totalSteps = 2;
   const draft = loadDraft();
 
   const stepLabel = document.getElementById("wizard-step-label");
   const step1 = document.getElementById("wizard-step-1");
   const step2 = document.getElementById("wizard-step-2");
-  const step3 = document.getElementById("wizard-step-3");
   const backBtn = document.getElementById("wizard-back");
   const nextBtn = document.getElementById("wizard-next");
   const submitBtn = document.getElementById("wizard-submit");
@@ -65,45 +64,54 @@ export function setupListingWizard(apiBase = API_BASE): void {
     };
   }
 
+  function parsePrice(value: string): number | null {
+    const normalized = value.replace(/,/g, "").trim();
+    if (!normalized) return null;
+    const n = Number(normalized);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  function validateDetails(): string | null {
+    const d = readDraft();
+    saveDraft(d);
+    if (!d.name) return "Product name is required";
+    if (!d.sku) return "SKU is required";
+    if (!parsePrice(d.unitPrice)) return "Enter a valid price in PHP";
+    const patronage = Number(d.patronagePerUnit.replace(/,/g, ""));
+    if (!Number.isFinite(patronage) || patronage < 0) return "Patronage must be zero or greater";
+    return null;
+  }
+
   function updateUi() {
     stepLabel && (stepLabel.textContent = `Step ${step} of ${totalSteps}`);
     step1?.classList.toggle("hidden", step !== 1);
     step2?.classList.toggle("hidden", step !== 2);
-    step3?.classList.toggle("hidden", step !== 3);
     backBtn?.classList.toggle("hidden", step === 1);
     nextBtn?.classList.toggle("hidden", step === totalSteps);
     submitBtn?.classList.toggle("hidden", step !== totalSteps);
 
+    if (backBtn instanceof HTMLButtonElement) backBtn.disabled = step === 1;
+    if (nextBtn instanceof HTMLButtonElement) nextBtn.disabled = step === totalSteps;
+    if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = step !== totalSteps;
+
     if (step === totalSteps && reviewEl) {
       const d = readDraft();
+      const price = parsePrice(d.unitPrice) ?? 0;
       reviewEl.innerHTML = `
         <dl class="grid gap-2 text-body-sm m-0">
           <div><dt class="text-neutral-500 inline">SKU:</dt> <dd class="inline font-mono">${d.sku}</dd></div>
           <div><dt class="text-neutral-500 inline">Name:</dt> <dd class="inline">${d.name}</dd></div>
           <div><dt class="text-neutral-500 inline">Category:</dt> <dd class="inline">${d.category}</dd></div>
-          <div><dt class="text-neutral-500 inline">Price:</dt> <dd class="inline text-price text-brand-600">₱${Number(d.unitPrice).toFixed(2)}</dd></div>
+          <div><dt class="text-neutral-500 inline">Price:</dt> <dd class="inline text-price text-brand-600">₱${price.toFixed(2)}</dd></div>
           <div><dt class="text-neutral-500 inline">Patronage / unit:</dt> <dd class="inline">₱${Number(d.patronagePerUnit).toFixed(2)}</dd></div>
         </dl>
         <p class="text-caption text-neutral-500 mt-4 m-0">Submitted listings are reviewed by coop officers before appearing in the marketplace.</p>`;
     }
   }
 
-  function validateStep(): string | null {
-    const d = readDraft();
-    saveDraft(d);
-    if (step === 1) {
-      if (!d.name) return "Product name is required";
-      if (!d.sku) return "SKU is required";
-    }
-    if (step === 2) {
-      if (!d.unitPrice || Number(d.unitPrice) <= 0) return "Enter a valid price";
-    }
-    return null;
-  }
-
   nextBtn?.addEventListener("click", () => {
     errorEl?.classList.add("hidden");
-    const err = validateStep();
+    const err = validateDetails();
     if (err) {
       if (errorEl) {
         errorEl.textContent = err;
@@ -124,8 +132,19 @@ export function setupListingWizard(apiBase = API_BASE): void {
   submitBtn?.addEventListener("click", async () => {
     errorEl?.classList.add("hidden");
     successEl?.classList.add("hidden");
-    const err = validateStep();
+
+    if (step !== totalSteps) {
+      if (errorEl) {
+        errorEl.textContent = "Continue to review before submitting.";
+        errorEl.classList.remove("hidden");
+      }
+      return;
+    }
+
+    const err = validateDetails();
     if (err) {
+      step = 1;
+      updateUi();
       if (errorEl) {
         errorEl.textContent = err;
         errorEl.classList.remove("hidden");
@@ -143,6 +162,7 @@ export function setupListingWizard(apiBase = API_BASE): void {
     }
 
     const d = readDraft();
+    const price = parsePrice(d.unitPrice)!;
     if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = true;
 
     try {
@@ -153,7 +173,7 @@ export function setupListingWizard(apiBase = API_BASE): void {
           sku: d.sku,
           name: d.name,
           category: d.category,
-          unitPrice: Number(d.unitPrice).toFixed(2),
+          unitPrice: price.toFixed(2),
           patronagePerUnit: Number(d.patronagePerUnit).toFixed(2),
           submitForReview: true,
         }),
@@ -168,7 +188,6 @@ export function setupListingWizard(apiBase = API_BASE): void {
       }
       step1?.classList.add("hidden");
       step2?.classList.add("hidden");
-      step3?.classList.add("hidden");
       nextBtn?.classList.add("hidden");
       backBtn?.classList.add("hidden");
       submitBtn?.classList.add("hidden");

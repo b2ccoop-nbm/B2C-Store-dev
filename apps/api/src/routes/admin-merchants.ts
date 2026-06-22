@@ -12,7 +12,12 @@ import {
   listPendingReviewListings,
   MerchantListingError,
 } from "../services/merchant-listings";
-import { rotateVendorToken, VendorError } from "../services/vendors";
+import { rotateVendorToken, listActiveVendors, VendorError } from "../services/vendors";
+import {
+  approveVendorProfileChange,
+  listPendingProfileChanges,
+  MerchantProfileError,
+} from "../services/merchant-profile";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
 type AdminContext = Context<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>;
@@ -119,6 +124,68 @@ export async function patchApproveListing(c: AdminContext) {
     return c.json({ ok: true, listing });
   } catch (err) {
     if (err instanceof MerchantListingError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function getAdminVendors(c: AdminContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const rows = await listActiveVendors(db);
+    const vendors = rows.map((v) => ({
+      code: v.code,
+      slug: v.slug,
+      name: v.name,
+      ownerEmail: v.ownerEmail,
+      createdAt: v.createdAt.toISOString(),
+    }));
+    return c.json({ count: vendors.length, vendors });
+  } finally {
+    await close();
+  }
+}
+
+export async function getAdminPendingProfileChanges(c: AdminContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const changes = await listPendingProfileChanges(db);
+    return c.json({ count: changes.length, changes });
+  } finally {
+    await close();
+  }
+}
+
+export async function patchApproveVendorProfile(c: AdminContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = c.req.param("code");
+  if (!vendorCode) {
+    return c.json({ error: "Vendor code required" }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const profile = await approveVendorProfileChange(db, vendorCode);
+    return c.json({ ok: true, profile });
+  } catch (err) {
+    if (err instanceof MerchantProfileError) {
       return c.json({ error: err.message }, err.status);
     }
     throw err;

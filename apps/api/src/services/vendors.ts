@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { vendors } from "../db/schema";
 import { generateVendorToken, hashVendorToken } from "../lib/vendor-token";
@@ -141,6 +141,20 @@ export async function bindVendorFirebaseUid(
     name: vendor.name,
     firebaseUid,
   };
+}
+
+export async function listActiveVendors(db: StoreDatabase) {
+  return db
+    .select({
+      code: vendors.code,
+      slug: vendors.slug,
+      name: vendors.name,
+      ownerEmail: vendors.ownerEmail,
+      createdAt: vendors.createdAt,
+    })
+    .from(vendors)
+    .where(eq(vendors.isActive, true))
+    .orderBy(desc(vendors.createdAt));
 }
 
 export async function rotateVendorToken(db: StoreDatabase, vendorCode: string) {

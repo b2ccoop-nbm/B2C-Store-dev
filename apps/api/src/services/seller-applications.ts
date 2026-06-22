@@ -211,6 +211,8 @@ export async function approveSellerApplication(
       email: application.applicantEmail,
       ownerEmail: application.applicantEmail,
       description: application.description,
+      contactPhone: application.contactPhone,
+      businessType: application.businessType,
       apiTokenHash,
       firebaseUid: application.applicantFirebaseUid,
     })

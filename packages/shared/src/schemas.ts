@@ -175,3 +175,31 @@ export const storefrontResponseSchema = z.object({
 });
 
 export type StorefrontResponse = z.infer<typeof storefrontResponseSchema>;
+
+export const merchantBusinessTypeSchema = z.enum(["product", "service", "farm", "food"]);
+export type MerchantBusinessType = z.infer<typeof merchantBusinessTypeSchema>;
+
+export const merchantProfileSchema = z.object({
+  code: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  email: z.string().nullable(),
+  ownerEmail: z.string().nullable(),
+  contactPhone: z.string().nullable(),
+  businessType: merchantBusinessTypeSchema,
+  pendingName: z.string().nullable(),
+  pendingSlug: z.string().nullable(),
+});
+
+export type MerchantProfile = z.infer<typeof merchantProfileSchema>;
+
+export const updateMerchantProfileSchema = z.object({
+  name: z.string().min(2).max(255).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  email: z.string().email().max(255).optional(),
+  contactPhone: z.string().min(7).max(32).nullable().optional(),
+  businessType: merchantBusinessTypeSchema.optional(),
+});
+
+export type UpdateMerchantProfileRequest = z.infer<typeof updateMerchantProfileSchema>;

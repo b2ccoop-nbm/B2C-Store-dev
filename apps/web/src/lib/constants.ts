@@ -24,6 +24,9 @@ export const TRUST_COPY = {
   registration: "CDA-registered consumers cooperative",
 } as const;
 
-/** Member portal on WebApp — passbook & full coop profile require sign-in there. */
+/** Member portal / coop landing on WebApp. */
 export const WEBAPP_MEMBER_URL =
   import.meta.env.PUBLIC_WEBAPP_URL ?? "https://b2ccoop.com";
+
+/** Alias — main B2CCoop.com landing (same as member portal root). */
+export const COOP_HOME_URL = WEBAPP_MEMBER_URL;

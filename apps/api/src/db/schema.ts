@@ -48,6 +48,11 @@ export const vendors = pgTable("vendors", {
   email: varchar("email", { length: 255 }),
   ownerEmail: varchar("owner_email", { length: 255 }),
   description: text("description"),
+  contactPhone: varchar("contact_phone", { length: 32 }),
+  businessType: varchar("business_type", { length: 64 }).notNull().default("product"),
+  /** HQ-reviewed storefront rename — applied when officers approve. */
+  pendingName: varchar("pending_name", { length: 255 }),
+  pendingSlug: varchar("pending_slug", { length: 128 }),
   /** SHA-256 hex of per-vendor API access token (plaintext shown once on approval). */
   apiTokenHash: varchar("api_token_hash", { length: 64 }),
   /** Firebase Auth UID of the store owner (linked after member sign-in). */

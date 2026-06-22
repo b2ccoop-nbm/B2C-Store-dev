@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
-import { createListingRequestSchema } from "@b2ccoop/store-shared";
+import { createListingRequestSchema, updateMerchantProfileSchema } from "@b2ccoop/store-shared";
 import { createDb } from "../db/client";
 import { orders } from "../db/schema";
 import { getVendorCode, requireMerchantVendor } from "../middleware/merchant-scope";
@@ -11,6 +11,11 @@ import {
   listMerchantListings,
   MerchantListingError,
 } from "../services/merchant-listings";
+import {
+  getMerchantProfile,
+  MerchantProfileError,
+  updateMerchantProfile,
+} from "../services/merchant-profile";
 import { confirmPickupAndPostLedger, listPendingPickupOrders, OrderError } from "../services/orders";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 import type { MerchantVariables } from "../middleware/vendor-auth";
@@ -42,6 +47,61 @@ export async function getMerchantSession(c: MerchantContext) {
         name: vendor.name,
       },
     });
+  } finally {
+    await close();
+  }
+}
+
+export async function getMerchantProfileRoute(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const { db, close } = createDb(dbUrl);
+  try {
+    const profile = await getMerchantProfile(db, vendorCode);
+    return c.json({ ok: true, profile });
+  } catch (err) {
+    if (err instanceof MerchantProfileError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function patchMerchantProfileRoute(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const body = await c.req.json().catch(() => null);
+  const parsed = updateMerchantProfileSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const result = await updateMerchantProfile(db, vendorCode, parsed.data);
+    return c.json({
+      ok: true,
+      profile: result.profile,
+      nameChangePending: result.nameChangePending,
+      message: result.nameChangePending
+        ? "Business name change submitted for coop officer review."
+        : "Store profile updated.",
+    });
+  } catch (err) {
+    if (err instanceof MerchantProfileError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
   } finally {
     await close();
   }

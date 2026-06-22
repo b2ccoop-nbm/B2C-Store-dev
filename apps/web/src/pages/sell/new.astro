@@ -20,7 +20,7 @@ const categories = [
   <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-display m-0">Listing wizard</h1>
-      <p id="wizard-step-label" class="text-body-sm text-neutral-500 mt-2 m-0">Step 1 of 3</p>
+      <p id="wizard-step-label" class="text-body-sm text-neutral-500 mt-2 m-0">Step 1 of 2</p>
     </div>
     <Button href="/sell/apply" variant="ghost" size="sm">Set merchant credentials</Button>
   </header>
@@ -37,10 +37,16 @@ const categories = [
         required
         options={categories.map((c) => ({ value: c, label: c }))}
       />
-    </div>
-
-    <div id="wizard-step-2" class="hidden flex flex-col gap-4">
-      <Input id="listing-price" name="unitPrice" type="text" label="Price (PHP)" required inputMode="decimal" placeholder="199.00" />
+      <Input
+        id="listing-price"
+        name="unitPrice"
+        type="text"
+        label="Price (PHP)"
+        required
+        inputMode="decimal"
+        placeholder="199.00"
+        hint="Selling price members will pay at checkout"
+      />
       <Input
         id="listing-patronage"
         name="patronagePerUnit"
@@ -52,7 +58,7 @@ const categories = [
       />
     </div>
 
-    <div id="wizard-step-3" class="hidden">
+    <div id="wizard-step-2" class="hidden">
       <h2 class="text-title m-0 mb-4">Review & submit</h2>
       <div id="wizard-review" />
     </div>

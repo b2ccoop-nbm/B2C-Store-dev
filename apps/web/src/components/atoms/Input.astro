@@ -15,6 +15,7 @@ interface Props {
   required?: boolean;
   autocomplete?: string;
   inputMode?: "text" | "email" | "tel" | "numeric" | "decimal" | "search";
+  list?: string;
   class?: string;
 }
 
@@ -32,6 +33,7 @@ const {
   required = false,
   autocomplete,
   inputMode,
+  list,
   class: className,
 } = Astro.props;
 
@@ -60,6 +62,7 @@ const inputClass = cn(
     required={required}
     autocomplete={autocomplete}
     inputmode={inputMode}
+    list={list}
     class={inputClass}
     aria-invalid={error ? "true" : undefined}
     aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}

@@ -5,8 +5,11 @@ import { corsOrigins, resolveDatabaseUrl, type WorkerEnv } from "./env";
 import {
   getAdminPendingApplications,
   getAdminPendingListings,
+  getAdminPendingProfileChanges,
+  getAdminVendors,
   patchApproveApplication,
   patchApproveListing,
+  patchApproveVendorProfile,
   patchRejectApplication,
   patchRotateVendorToken,
 } from "./routes/admin-merchants";
@@ -19,10 +22,12 @@ import { getAdminSession } from "./routes/admin-session";
 import {
   getMerchantListings,
   getMerchantPendingOrders,
+  getMerchantProfileRoute,
   getMerchantSession,
   merchantAuth,
   merchantVendorScope,
   patchMerchantConfirmPickup,
+  patchMerchantProfileRoute,
   postMerchantListing,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
@@ -68,6 +73,8 @@ app.get("/", (c) =>
       "POST /merchant/bind-firebase",
       "GET /members/merchant-context",
       "GET /merchant/session",
+      "GET /merchant/profile",
+      "PATCH /merchant/profile",
       "GET /merchant/listings",
       "POST /merchant/listings",
       "GET /merchant/orders/pending",
@@ -76,6 +83,9 @@ app.get("/", (c) =>
       "GET /admin/orders/pending",
       "PATCH /admin/orders/:id/confirm-pickup",
       "GET /admin/seller-applications",
+      "GET /admin/vendors",
+      "GET /admin/profile-changes/pending",
+      "PATCH /admin/vendors/:code/approve-profile",
       "GET /admin/listings/pending",
       "PATCH /admin/seller-applications/:id/approve",
       "PATCH /admin/seller-applications/:id/reject",
@@ -126,6 +136,8 @@ const merchant = new Hono<{ Bindings: WorkerEnv; Variables: MerchantVariables }>
 merchant.use("*", merchantAuth());
 merchant.use("*", merchantVendorScope);
 merchant.get("/session", (c) => getMerchantSession(c));
+merchant.get("/profile", (c) => getMerchantProfileRoute(c));
+merchant.patch("/profile", (c) => patchMerchantProfileRoute(c));
 merchant.get("/listings", (c) => getMerchantListings(c));
 merchant.post("/listings", (c) => postMerchantListing(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
@@ -138,6 +150,9 @@ admin.get("/session", (c) => getAdminSession(c));
 admin.get("/orders/pending", (c) => getAdminPendingOrders(c));
 admin.patch("/orders/:id/confirm-pickup", (c) => patchConfirmPickup(c));
 admin.get("/seller-applications", (c) => getAdminPendingApplications(c));
+admin.get("/vendors", (c) => getAdminVendors(c));
+admin.get("/profile-changes/pending", (c) => getAdminPendingProfileChanges(c));
+admin.patch("/vendors/:code/approve-profile", (c) => patchApproveVendorProfile(c));
 admin.get("/listings/pending", (c) => getAdminPendingListings(c));
 admin.patch("/seller-applications/:id/approve", (c) => patchApproveApplication(c));
 admin.patch("/seller-applications/:id/reject", (c) => patchRejectApplication(c));
