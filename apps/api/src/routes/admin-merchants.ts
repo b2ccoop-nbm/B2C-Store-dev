@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { createDb } from "../db/client";
+import type { StoreAdminVariables } from "../middleware/store-admin-auth";
 import {
   approveSellerApplication,
   listPendingSellerApplications,
@@ -14,7 +15,9 @@ import {
 import { rotateVendorToken, VendorError } from "../services/vendors";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
-export async function getAdminPendingApplications(c: Context<{ Bindings: WorkerEnv }>) {
+type AdminContext = Context<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>;
+
+export async function getAdminPendingApplications(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -29,7 +32,7 @@ export async function getAdminPendingApplications(c: Context<{ Bindings: WorkerE
   }
 }
 
-export async function patchApproveApplication(c: Context<{ Bindings: WorkerEnv }>) {
+export async function patchApproveApplication(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -56,7 +59,7 @@ export async function patchApproveApplication(c: Context<{ Bindings: WorkerEnv }
   }
 }
 
-export async function patchRejectApplication(c: Context<{ Bindings: WorkerEnv }>) {
+export async function patchRejectApplication(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -83,7 +86,7 @@ export async function patchRejectApplication(c: Context<{ Bindings: WorkerEnv }>
   }
 }
 
-export async function getAdminPendingListings(c: Context<{ Bindings: WorkerEnv }>) {
+export async function getAdminPendingListings(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -98,7 +101,7 @@ export async function getAdminPendingListings(c: Context<{ Bindings: WorkerEnv }
   }
 }
 
-export async function patchApproveListing(c: Context<{ Bindings: WorkerEnv }>) {
+export async function patchApproveListing(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -124,7 +127,7 @@ export async function patchApproveListing(c: Context<{ Bindings: WorkerEnv }>) {
   }
 }
 
-export async function patchRotateVendorToken(c: Context<{ Bindings: WorkerEnv }>) {
+export async function patchRotateVendorToken(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);

@@ -1,0 +1,40 @@
+---
+import Button from "@/components/atoms/Button.astro";
+import Card from "@/components/atoms/Card.astro";
+import Input from "@/components/atoms/Input.astro";
+---
+
+<Card id="admin-sign-in-card" class="max-w-lg mb-8">
+  <h2 class="text-title m-0 mb-2">Merchant approvers</h2>
+  <p class="text-body-sm text-neutral-500 m-0">
+  Sign in with a designated coop account to approve seller applications and listings.
+  </p>
+  <ul class="mt-3 space-y-1 text-body-sm m-0 pl-5">
+    <li><span class="font-semibold">Admin</span> — <span class="text-neutral-600">b2ccoop@gmail.com</span></li>
+    <li><span class="font-semibold">BOD Chairperson</span> — <span class="text-neutral-600">nmatunog@gmail.com</span></li>
+  </ul>
+  <div class="mt-4 flex flex-col gap-3">
+    <Input id="admin-sign-in-email" name="adminEmail" type="email" label="Email" autocomplete="email" />
+    <Input id="admin-sign-in-password" name="adminPassword" type="password" label="Password" autocomplete="current-password" />
+    <Button type="button" variant="primary" id="admin-sign-in-btn">Sign in</Button>
+    <Button type="button" variant="secondary" id="admin-google-sign-in-btn">Continue with Google</Button>
+    <p id="admin-sign-in-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
+  </div>
+</Card>
+
+<Card id="admin-signed-in-card" class="hidden max-w-lg mb-8">
+  <p class="text-caption font-semibold uppercase text-accent-600 m-0">Signed in</p>
+  <p id="admin-signed-in-label" class="text-body font-semibold mt-2 m-0" />
+  <Button type="button" variant="secondary" id="admin-sign-out-btn" class="mt-4">Sign out</Button>
+</Card>
+
+<Card id="admin-dev-secret-card" class="hidden max-w-md mb-8">
+  <Input
+    id="admin-secret"
+    name="adminSecret"
+    type="password"
+    label="Dev staff secret (local only)"
+    hint="DEV_ADMIN_SECRET — smoke tests and local API without Firebase"
+    autocomplete="off"
+  />
+</Card>

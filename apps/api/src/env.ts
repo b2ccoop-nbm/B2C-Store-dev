@@ -16,6 +16,8 @@ export type WorkerEnv = {
   PUBLIC_STORE_URL?: string;
   /** Local dev staff API (Phase 1c) — Bearer token for admin routes */
   DEV_ADMIN_SECRET?: string;
+  /** Comma-separated merchant approver emails (default: b2ccoop@gmail.com, nmatunog@gmail.com) */
+  MERCHANT_APPROVER_EMAILS?: string;
 };
 
 export function resolveDatabaseUrl(env: WorkerEnv): string | null {

@@ -1,27 +1,5 @@
 import { API_BASE } from "@/lib/api";
-
-const ADMIN_SECRET_KEY = "b2c_admin_secret";
-
-function getSecretInput(): HTMLInputElement | null {
-  const input = document.getElementById("admin-secret");
-  return input instanceof HTMLInputElement ? input : null;
-}
-
-function getSecret(): string {
-  return getSecretInput()?.value.trim() ?? "";
-}
-
-function persistSecret(secret: string): void {
-  if (secret) sessionStorage.setItem(ADMIN_SECRET_KEY, secret);
-}
-
-function restoreSecret(): void {
-  const stored = sessionStorage.getItem(ADMIN_SECRET_KEY);
-  const input = getSecretInput();
-  if (stored && input && !input.value) {
-    input.value = stored;
-  }
-}
+import { setupStoreAdminSignIn } from "@/scripts/store-admin-auth";
 
 export function setupAdminMerchants(apiBase = API_BASE): void {
   const loadAppsBtn = document.getElementById("load-applications");
@@ -29,29 +7,33 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   const loadListingsBtn = document.getElementById("load-pending-listings");
   const listingsPanel = document.getElementById("pending-listings-panel");
   const errorEl = document.getElementById("admin-merchants-error");
-  const secretInput = getSecretInput();
 
-  restoreSecret();
-  secretInput?.addEventListener("change", () => persistSecret(getSecret()));
+  let authHeaders: HeadersInit | null = null;
+
+  function authJsonHeaders(): HeadersInit | null {
+    if (!authHeaders) return null;
+    return { ...authHeaders, "Content-Type": "application/json" };
+  }
+
+  function requireAuth(): HeadersInit | null {
+    if (!authHeaders) {
+      if (errorEl) {
+        errorEl.textContent = "Sign in as a designated merchant approver first.";
+        errorEl.classList.remove("hidden");
+      }
+      return null;
+    }
+    return authHeaders;
+  }
 
   async function loadApplications() {
     errorEl?.classList.add("hidden");
-    const secret = getSecret();
-    if (!secret) {
-      if (errorEl) {
-        errorEl.textContent = "Enter staff secret";
-        errorEl.classList.remove("hidden");
-      }
-      return;
-    }
-    persistSecret(secret);
-    if (!appsList) return;
+    const headers = requireAuth();
+    if (!headers || !appsList) return;
     appsList.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
 
     try {
-      const res = await fetch(`${apiBase}/admin/seller-applications`, {
-        headers: { Authorization: `Bearer ${secret}` },
-      });
+      const res = await fetch(`${apiBase}/admin/seller-applications`, { headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Load failed");
 
@@ -88,12 +70,14 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         btn.addEventListener("click", async () => {
           const id = btn.getAttribute("data-id");
           if (!id) return;
+          const h = authJsonHeaders();
+          if (!h) return;
           const card = btn.closest("[data-app-id]");
           const msg = card?.querySelector(".b2c-app-msg");
           try {
             const res = await fetch(`${apiBase}/admin/seller-applications/${id}/approve`, {
               method: "PATCH",
-              headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+              headers: h,
               body: JSON.stringify({}),
             });
             const data = await res.json();
@@ -121,13 +105,15 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         btn.addEventListener("click", async () => {
           const id = btn.getAttribute("data-id");
           if (!id) return;
+          const h = authJsonHeaders();
+          if (!h) return;
           const notes = window.prompt("Optional reason for rejection:") ?? "";
           const card = btn.closest("[data-app-id]");
           const msg = card?.querySelector(".b2c-app-msg");
           try {
             const res = await fetch(`${apiBase}/admin/seller-applications/${id}/reject`, {
               method: "PATCH",
-              headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+              headers: h,
               body: JSON.stringify({ reviewNotes: notes }),
             });
             const data = await res.json();
@@ -156,22 +142,12 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   }
 
   async function loadListings() {
-    const secret = getSecret();
-    if (!secret) {
-      if (errorEl) {
-        errorEl.textContent = "Enter staff secret";
-        errorEl.classList.remove("hidden");
-      }
-      return;
-    }
-    persistSecret(secret);
-    if (!listingsPanel) return;
+    const headers = requireAuth();
+    if (!headers || !listingsPanel) return;
     listingsPanel.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
 
     try {
-      const res = await fetch(`${apiBase}/admin/listings/pending`, {
-        headers: { Authorization: `Bearer ${secret}` },
-      });
+      const res = await fetch(`${apiBase}/admin/listings/pending`, { headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Load failed");
 
@@ -187,7 +163,6 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
             sku: string;
             name: string;
             unitPrice: string;
-            listingStatus: string;
           }) => `
         <article class="elevation-1 p-4 mb-3 flex flex-wrap items-center justify-between gap-3" data-listing="${l.vendorCode}:${l.sku}">
           <div>
@@ -204,12 +179,13 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         btn.addEventListener("click", async () => {
           const vendor = btn.getAttribute("data-vendor");
           const sku = btn.getAttribute("data-sku");
-          if (!vendor || !sku) return;
+          const h = requireAuth();
+          if (!vendor || !sku || !h) return;
           if (btn instanceof HTMLButtonElement) btn.disabled = true;
           try {
             const res = await fetch(
               `${apiBase}/admin/listings/${encodeURIComponent(vendor)}/${encodeURIComponent(sku)}/approve`,
-              { method: "PATCH", headers: { Authorization: `Bearer ${secret}` } },
+              { method: "PATCH", headers: h },
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.error ?? "Approve failed");
@@ -237,16 +213,10 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   const rotateMsg = document.getElementById("rotate-token-msg");
 
   rotateBtn?.addEventListener("click", async () => {
-    const secret = getSecret();
+    const headers = requireAuth();
     const vendorCode =
       rotateCodeInput instanceof HTMLInputElement ? rotateCodeInput.value.trim() : "";
-    if (!secret) {
-      if (errorEl) {
-        errorEl.textContent = "Enter staff secret";
-        errorEl.classList.remove("hidden");
-      }
-      return;
-    }
+    if (!headers) return;
     if (!vendorCode) {
       if (rotateMsg) {
         rotateMsg.textContent = "Enter vendor code";
@@ -260,7 +230,7 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
     try {
       const res = await fetch(
         `${apiBase}/admin/vendors/${encodeURIComponent(vendorCode)}/rotate-token`,
-        { method: "PATCH", headers: { Authorization: `Bearer ${secret}` } },
+        { method: "PATCH", headers },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Rotate failed");
@@ -280,8 +250,11 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
     }
   });
 
-  if (getSecret()) {
-    void loadApplications();
-    void loadListings();
-  }
+  setupStoreAdminSignIn(apiBase, (state) => {
+    authHeaders = state.headers;
+    if (state.headers) {
+      void loadApplications();
+      void loadListings();
+    }
+  });
 }

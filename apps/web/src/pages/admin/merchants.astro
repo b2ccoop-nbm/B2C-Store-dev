@@ -3,25 +3,20 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 import Button from "@/components/atoms/Button.astro";
 import Card from "@/components/atoms/Card.astro";
 import Input from "@/components/atoms/Input.astro";
+import AdminSignInPanel from "@/components/organisms/AdminSignInPanel.astro";
 ---
 
 <AdminLayout title="Merchant approval">
   <header class="mb-6">
     <h1 class="text-display m-0">Merchants & listings</h1>
-    <p class="text-body-sm text-neutral-500 mt-2 m-0">Approve seller applications and new product listings.</p>
+    <p class="text-body-sm text-neutral-500 mt-2 m-0">
+      Approve seller applications and new product listings. Only designated coop approvers can act here.
+    </p>
   </header>
 
-  <Card class="max-w-md mb-8">
-    <Input
-      id="admin-secret"
-      name="adminSecret"
-      type="password"
-      label="Staff secret"
-      hint="DEV_ADMIN_SECRET from API configuration"
-      autocomplete="off"
-    />
-    <p id="admin-merchants-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />
-  </Card>
+  <AdminSignInPanel />
+
+  <p id="admin-merchants-error" class="hidden text-body-sm text-danger-600 mb-6 m-0" role="alert" />
 
   <section class="mb-10 max-w-2xl">
     <div class="flex flex-wrap items-center justify-between gap-4 mb-4">

@@ -15,6 +15,7 @@ import {
   getAdminPendingOrders,
   patchConfirmPickup,
 } from "./routes/admin-orders";
+import { getAdminSession } from "./routes/admin-session";
 import {
   getMerchantListings,
   getMerchantPendingOrders,
@@ -40,6 +41,7 @@ import { getOrder } from "./routes/orders";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
 import type { MerchantVariables } from "./middleware/vendor-auth";
+import type { StoreAdminVariables } from "./middleware/store-admin-auth";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
 
@@ -70,6 +72,7 @@ app.get("/", (c) =>
       "POST /merchant/listings",
       "GET /merchant/orders/pending",
       "PATCH /merchant/orders/:id/confirm-pickup",
+      "GET /admin/session",
       "GET /admin/orders/pending",
       "PATCH /admin/orders/:id/confirm-pickup",
       "GET /admin/seller-applications",
@@ -129,8 +132,9 @@ merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
 merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));
 app.route("/merchant", merchant);
 
-const admin = new Hono<{ Bindings: WorkerEnv }>();
+const admin = new Hono<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>();
 admin.use("*", adminAuth);
+admin.get("/session", (c) => getAdminSession(c));
 admin.get("/orders/pending", (c) => getAdminPendingOrders(c));
 admin.patch("/orders/:id/confirm-pickup", (c) => patchConfirmPickup(c));
 admin.get("/seller-applications", (c) => getAdminPendingApplications(c));

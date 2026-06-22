@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { createDb } from "../db/client";
-import { devAdminAuth } from "../middleware/dev-admin";
+import { storeAdminAuth } from "../middleware/store-admin-auth";
+import type { StoreAdminVariables } from "../middleware/store-admin-auth";
 import {
   confirmPickupAndPostLedger,
   listPendingPickupOrders,
@@ -8,9 +9,11 @@ import {
 } from "../services/orders";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
-export const adminAuth = devAdminAuth();
+export const adminAuth = storeAdminAuth();
 
-export async function getAdminPendingOrders(c: Context<{ Bindings: WorkerEnv }>) {
+type AdminContext = Context<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>;
+
+export async function getAdminPendingOrders(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
@@ -25,7 +28,7 @@ export async function getAdminPendingOrders(c: Context<{ Bindings: WorkerEnv }>)
   }
 }
 
-export async function patchConfirmPickup(c: Context<{ Bindings: WorkerEnv }>) {
+export async function patchConfirmPickup(c: AdminContext) {
   const dbUrl = resolveDatabaseUrl(c.env);
   if (!dbUrl) {
     return c.json({ error: "Database not configured" }, 503);
