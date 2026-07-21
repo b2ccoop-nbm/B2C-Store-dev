@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { products, vendors } from "../db/schema";
+import type { WorkerEnv } from "../env";
+import { resolvePublicImageUrl } from "../lib/product-image-url";
 
 export class StorefrontError extends Error {
   constructor(
@@ -12,7 +14,7 @@ export class StorefrontError extends Error {
   }
 }
 
-export async function getStorefrontBySlug(db: StoreDatabase, slug: string) {
+export async function getStorefrontBySlug(db: StoreDatabase, slug: string, env: WorkerEnv) {
   const normalized = slug.trim().toLowerCase();
   const vendorRows = await db
     .select()
@@ -35,6 +37,7 @@ export async function getStorefrontBySlug(db: StoreDatabase, slug: string) {
       unitPrice: products.unitPrice,
       patronagePerUnit: products.patronagePerUnit,
       currency: products.currency,
+      imageUrl: products.imageUrl,
     })
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
@@ -56,6 +59,7 @@ export async function getStorefrontBySlug(db: StoreDatabase, slug: string) {
       unitPrice: row.unitPrice,
       patronagePerUnit: row.patronagePerUnit,
       currency: row.currency,
+      imageUrl: resolvePublicImageUrl(env, row.imageUrl),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

@@ -202,6 +202,20 @@ export async function approveSellerApplication(
   const accessToken = generateVendorToken();
   const apiTokenHash = await hashVendorToken(accessToken);
 
+  let firebaseUid = application.applicantFirebaseUid?.trim() || null;
+  let firebaseLinkSkipped: { existingVendorCode: string } | null = null;
+  if (firebaseUid) {
+    const existingLink = await db
+      .select({ code: vendors.code })
+      .from(vendors)
+      .where(eq(vendors.firebaseUid, firebaseUid))
+      .limit(1);
+    if (existingLink[0]) {
+      firebaseLinkSkipped = { existingVendorCode: existingLink[0].code };
+      firebaseUid = null;
+    }
+  }
+
   const vendorInserted = await db
     .insert(vendors)
     .values({
@@ -214,7 +228,7 @@ export async function approveSellerApplication(
       contactPhone: application.contactPhone,
       businessType: application.businessType,
       apiTokenHash,
-      firebaseUid: application.applicantFirebaseUid,
+      firebaseUid,
     })
     .returning();
 
@@ -239,6 +253,14 @@ export async function approveSellerApplication(
       name: vendor.name,
     },
     accessToken,
+    ...(firebaseLinkSkipped
+      ? {
+          firebaseLinkSkipped: true as const,
+          existingVendorCode: firebaseLinkSkipped.existingVendorCode,
+          firebaseLinkNote:
+            "Member Google sign-in is already linked to another store. The seller can use vendor code + access token at /sell/apply.",
+        }
+      : {}),
   };
 }
 

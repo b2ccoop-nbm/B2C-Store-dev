@@ -96,6 +96,8 @@ export const products = pgTable(
     cogsPerUnit: numeric("cogs_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     patronagePerUnit: numeric("patronage_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     currency: varchar("currency", { length: 3 }).notNull().default("PHP"),
+    /** Public URL for product photo (R2). */
+    imageUrl: varchar("image_url", { length: 512 }),
     listingStatus: listingStatusEnum("listing_status").notNull().default("ACTIVE"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

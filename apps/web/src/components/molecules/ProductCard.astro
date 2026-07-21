@@ -4,9 +4,10 @@ import OfferingCard from "./OfferingCard.astro";
 
 interface Props {
   item: CatalogItemPublic;
+  density?: "compact" | "comfortable";
 }
 
-const { item } = Astro.props;
+const { item, density = "compact" } = Astro.props;
 ---
 
-<OfferingCard offering={item} />
+<OfferingCard offering={item} density={density} />

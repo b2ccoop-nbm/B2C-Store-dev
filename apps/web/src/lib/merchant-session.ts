@@ -74,6 +74,19 @@ export function merchantHeaders(): HeadersInit {
   return headers;
 }
 
+/** Bearer auth only — for multipart uploads (do not set Content-Type). */
+export function merchantAuthHeaders(): HeadersInit {
+  const token = getMerchantToken();
+  const vendorCode = getMerchantVendorCode();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+  if (vendorCode && !isVendorAccessToken(token)) {
+    headers["X-Vendor-Code"] = vendorCode;
+  }
+  return headers;
+}
+
 /** Validate access token with API and return vendor identity. */
 export async function validateMerchantToken(
   apiBase: string,

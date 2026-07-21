@@ -7,6 +7,8 @@
   "vars": {
     "ENVIRONMENT": "development"
   },
+  /** Enable after R2 is activated: create bucket `b2ccoop-store-images-dev`, set PUBLIC_IMAGES_BASE_URL */
+  // "r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "b2ccoop-store-images-dev" }],
   "observability": {
     "enabled": true
   },

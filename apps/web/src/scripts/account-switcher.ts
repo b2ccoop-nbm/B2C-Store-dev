@@ -85,6 +85,9 @@ async function loadAccountSnapshot(apiBase: string): Promise<AccountSnapshot> {
   if (persona === "admin" && adminLabel) {
     detail = adminSession?.email ?? effectiveEmail ?? "Coop officer";
     subtitle = `${adminLabel} · HQ tools`;
+  } else if (persona === "admin") {
+    detail = "Coop officer";
+    subtitle = "Sign in below for store admin tools";
   } else if (persona === "merchant") {
     if (merchantStore) {
       detail = merchantStore;
@@ -138,64 +141,46 @@ function getStoredMemberFallback(): string | null {
   return email || null;
 }
 
-export function setupAccountSwitcher(apiBase = API_BASE): void {
-  const trigger = document.getElementById("persona-trigger");
-  const menu = document.getElementById("persona-menu");
-  const label = document.getElementById("persona-label");
-  const detailEl = document.getElementById("account-detail");
-  const summaryEl = document.getElementById("account-summary");
-  const subtitleEl = document.getElementById("account-subtitle");
-  const initialsEl = document.getElementById("account-initials");
-  if (!trigger || !menu) return;
+function paintSwitcherRoot(root: HTMLElement, snapshot: AccountSnapshot): void {
+  const label = root.querySelector("[data-persona-label]");
+  const detailEl = root.querySelector("[data-account-detail]");
+  const summaryEl = root.querySelector("[data-account-summary]");
+  const subtitleEl = root.querySelector("[data-account-subtitle]");
+  const initialsEl = root.querySelector("[data-account-initials]");
 
-  const pathPersona = inferPersonaFromPath(window.location.pathname);
-  if (pathPersona && pathPersona !== $persona.get()) {
-    $persona.set(pathPersona);
+  if (label) label.textContent = snapshot.personaLabel;
+  if (detailEl) detailEl.textContent = snapshot.detail;
+  if (summaryEl) {
+    summaryEl.textContent = `${snapshot.personaLabel} · ${snapshot.detail}`;
   }
+  if (subtitleEl) subtitleEl.textContent = snapshot.subtitle;
+  if (initialsEl) initialsEl.textContent = snapshot.initials;
 
-  let refreshTimer: number | undefined;
-
-  async function refresh() {
-    const snapshot = await loadAccountSnapshot(apiBase);
-    if (label) label.textContent = snapshot.personaLabel;
-    if (detailEl) detailEl.textContent = snapshot.detail;
-    if (summaryEl) {
-      summaryEl.textContent = `${snapshot.personaLabel} · ${snapshot.detail}`;
-    }
-    if (subtitleEl) subtitleEl.textContent = snapshot.subtitle;
-    if (initialsEl) initialsEl.textContent = snapshot.initials;
-
-    menu?.querySelectorAll("[data-persona-option]").forEach((btn) => {
-      const id = (btn as HTMLElement).dataset.personaOption;
-      btn.setAttribute("aria-selected", id === snapshot.persona ? "true" : "false");
-      btn.classList.toggle("bg-neutral-50", id === snapshot.persona);
-    });
-  }
-
-  function scheduleRefresh() {
-    window.clearTimeout(refreshTimer);
-    refreshTimer = window.setTimeout(() => void refresh(), 80);
-  }
-
-  $persona.subscribe(scheduleRefresh);
-  subscribeMemberAuth(scheduleRefresh);
-  window.addEventListener("persona-change", scheduleRefresh);
-  document.addEventListener("astro:page-load", () => {
-    const inferred = inferPersonaFromPath(window.location.pathname);
-    if (inferred) $persona.set(inferred);
-    scheduleRefresh();
+  root.querySelectorAll("[data-persona-option]").forEach((btn) => {
+    const id = (btn as HTMLElement).dataset.personaOption;
+    btn.setAttribute("aria-selected", id === snapshot.persona ? "true" : "false");
+    btn.classList.toggle("bg-neutral-50", id === snapshot.persona);
   });
+}
+
+function setupPersonaSwitcherRoot(root: HTMLElement, apiBase: string): void {
+  if (root.dataset.personaBound === "1") return;
+  root.dataset.personaBound = "1";
+
+  const trigger = root.querySelector<HTMLButtonElement>("[data-persona-trigger]");
+  const menu = root.querySelector<HTMLElement>("[data-persona-menu]");
+  if (!trigger || !menu) return;
 
   const close = () => {
     menu.classList.add("hidden");
     trigger.setAttribute("aria-expanded", "false");
   };
 
-  trigger.addEventListener("click", () => {
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
     const open = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !open);
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) void refresh();
   });
 
   menu.querySelectorAll("[data-persona-option]").forEach((btn) => {
@@ -217,13 +202,67 @@ export function setupAccountSwitcher(apiBase = API_BASE): void {
     });
   });
 
-  document.addEventListener("click", (e) => {
-    if (!trigger.contains(e.target as Node) && !menu.contains(e.target as Node)) close();
-  });
-
-  document.addEventListener("keydown", (e) => {
+  root.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
   });
 
-  void refresh();
+  document.addEventListener("click", (e) => {
+    if (!root.contains(e.target as Node)) close();
+  });
+}
+
+let sharedSnapshot: AccountSnapshot | null = null;
+let sharedRefreshPromise: Promise<AccountSnapshot> | null = null;
+
+async function refreshAllSwitchers(apiBase: string): Promise<void> {
+  if (!sharedRefreshPromise) {
+    sharedRefreshPromise = loadAccountSnapshot(apiBase).finally(() => {
+      sharedRefreshPromise = null;
+    });
+  }
+  sharedSnapshot = await sharedRefreshPromise;
+  document.querySelectorAll<HTMLElement>("[data-persona-switcher]").forEach((root) => {
+    paintSwitcherRoot(root, sharedSnapshot!);
+  });
+}
+
+let listenersBound = false;
+
+export function setupAccountSwitcher(apiBase = API_BASE): void {
+  const pathPersona = inferPersonaFromPath(window.location.pathname);
+  if (pathPersona && pathPersona !== $persona.get()) {
+    $persona.set(pathPersona);
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-persona-switcher]").forEach((root) => {
+    setupPersonaSwitcherRoot(root, apiBase);
+  });
+
+  if (listenersBound) {
+    void refreshAllSwitchers(apiBase);
+    return;
+  }
+  listenersBound = true;
+
+  let refreshTimer: number | undefined;
+  function scheduleRefresh() {
+    window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(() => void refreshAllSwitchers(apiBase), 80);
+  }
+
+  $persona.subscribe(scheduleRefresh);
+  subscribeMemberAuth(scheduleRefresh);
+  window.addEventListener("persona-change", scheduleRefresh);
+  document.addEventListener("astro:page-load", () => {
+    const inferred = inferPersonaFromPath(window.location.pathname);
+    if (inferred) $persona.set(inferred);
+    document.querySelectorAll<HTMLElement>("[data-persona-switcher]").forEach((root) => {
+      if (root.dataset.personaBound !== "1") {
+        setupPersonaSwitcherRoot(root, apiBase);
+      }
+    });
+    scheduleRefresh();
+  });
+
+  void refreshAllSwitchers(apiBase);
 }

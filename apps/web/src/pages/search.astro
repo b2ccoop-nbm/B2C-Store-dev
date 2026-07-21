@@ -2,7 +2,7 @@
 import MarketplaceLayout from "@/layouts/MarketplaceLayout.astro";
 import SearchField from "@/components/molecules/SearchField.astro";
 import CategoryChip from "@/components/molecules/CategoryChip.astro";
-import OfferingCard from "@/components/molecules/OfferingCard.astro";
+import CatalogGrid from "@/components/molecules/CatalogGrid.astro";
 import Card from "@/components/atoms/Card.astro";
 import { fetchCatalog } from "@/services/catalog";
 import { filterCatalog } from "@/lib/search";
@@ -71,13 +71,7 @@ const items = q ? filterCatalog(allItems, q) : [];
               </a>
             </div>
           ) : (
-            <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 list-none m-0 p-0">
-              {items.map((item) => (
-                <li class="min-h-0">
-                  <OfferingCard offering={item} />
-                </li>
-              ))}
-            </ul>
+            <CatalogGrid items={items} emptyTitle={`No matches for “${q}”`} />
           )
         }
       </section>

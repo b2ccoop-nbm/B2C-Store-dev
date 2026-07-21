@@ -58,7 +58,9 @@ export async function patchApproveApplication(c: AdminContext) {
     if (err instanceof SellerApplicationError) {
       return c.json({ error: err.message }, err.status);
     }
-    throw err;
+    const message = err instanceof Error ? err.message : "Approve failed";
+    console.error("[patchApproveApplication]", err);
+    return c.json({ error: message }, 500);
   } finally {
     await close();
   }

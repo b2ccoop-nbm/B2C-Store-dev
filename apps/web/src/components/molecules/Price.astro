@@ -5,12 +5,19 @@ interface Props {
   amount: string | number;
   class?: string;
   from?: boolean;
+  size?: "sm" | "md";
 }
 
-const { amount, class: className = "", from = false } = Astro.props;
+const { amount, class: className = "", from = false, size = "md" } = Astro.props;
 ---
 
-<p class:list={["text-price text-brand-600 m-0", className]}>
+<p
+  class:list={[
+    size === "sm" ? "text-body-sm font-bold text-brand-600" : "text-price text-brand-600",
+    "m-0",
+    className,
+  ]}
+>
   {from && <span class="text-body-sm font-normal text-neutral-500">From </span>}
   {formatPhp(amount)}
 </p>

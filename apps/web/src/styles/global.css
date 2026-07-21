@@ -129,4 +129,21 @@
       var(--color-brand-600)
     );
   }
+
+  .image-zoom-dialog::backdrop {
+    background: rgb(0 0 0 / 0.88);
+  }
+
+  .image-zoom-dialog[open] {
+    animation: image-zoom-in 180ms ease-out;
+  }
+
+  @keyframes image-zoom-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }

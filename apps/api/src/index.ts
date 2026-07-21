@@ -29,6 +29,7 @@ import {
   patchMerchantConfirmPickup,
   patchMerchantProfileRoute,
   postMerchantListing,
+  postMerchantListingImage,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
 import { getMemberMerchantContext } from "./routes/member-merchant";
@@ -44,6 +45,7 @@ import { getDevFixtures } from "./routes/dev-fixtures";
 import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activity";
 import { getOrder } from "./routes/orders";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
+import { getProductMedia } from "./routes/product-media";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
 import type { MerchantVariables } from "./middleware/vendor-auth";
 import type { StoreAdminVariables } from "./middleware/store-admin-auth";
@@ -77,6 +79,8 @@ app.get("/", (c) =>
       "PATCH /merchant/profile",
       "GET /merchant/listings",
       "POST /merchant/listings",
+      "POST /merchant/listings/:sku/image",
+      "GET /media/products/*",
       "GET /merchant/orders/pending",
       "PATCH /merchant/orders/:id/confirm-pickup",
       "GET /admin/session",
@@ -120,6 +124,7 @@ app.get("/health", async (c) => {
 });
 
 app.get("/catalog", (c) => getCatalog(c));
+app.get("/media/*", (c) => getProductMedia(c));
 app.get("/storefront/:slug", (c) => getStorefront(c));
 app.post("/checkout", (c) => postCheckout(c));
 app.get("/orders", (c) => getOrdersByEmail(c));
@@ -140,6 +145,7 @@ merchant.get("/profile", (c) => getMerchantProfileRoute(c));
 merchant.patch("/profile", (c) => patchMerchantProfileRoute(c));
 merchant.get("/listings", (c) => getMerchantListings(c));
 merchant.post("/listings", (c) => postMerchantListing(c));
+merchant.post("/listings/:sku/image", (c) => postMerchantListingImage(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
 merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));
 app.route("/merchant", merchant);

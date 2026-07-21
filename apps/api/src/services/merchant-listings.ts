@@ -1,6 +1,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
 import { products, vendors } from "../db/schema";
+import type { WorkerEnv } from "../env";
+import { resolvePublicImageUrl } from "../lib/product-image-url";
 
 export class MerchantListingError extends Error {
   constructor(
@@ -54,7 +56,7 @@ async function getVendorByCode(db: StoreDatabase, vendorCode: string) {
   return vendor;
 }
 
-export async function listMerchantListings(db: StoreDatabase, vendorCode: string) {
+export async function listMerchantListings(db: StoreDatabase, vendorCode: string, env: WorkerEnv) {
   const vendor = await getVendorByCode(db, vendorCode);
   const rows = await db
     .select()
@@ -62,7 +64,7 @@ export async function listMerchantListings(db: StoreDatabase, vendorCode: string
     .where(eq(products.vendorId, vendor.id))
     .orderBy(desc(products.updatedAt));
 
-  return rows.map((row) => serializeListing(row, vendor.code));
+  return rows.map((row) => serializeListing(row, vendor.code, env));
 }
 
 export async function createMerchantListing(db: StoreDatabase, input: CreateListingInput) {
@@ -151,7 +153,7 @@ export async function approveListing(db: StoreDatabase, vendorCode: string, sku:
   return serializeListing(updated[0]!, vendor.code);
 }
 
-function serializeListing(row: typeof products.$inferSelect, vendorCode: string) {
+function serializeListing(row: typeof products.$inferSelect, vendorCode: string, env?: WorkerEnv) {
   return {
     vendorCode,
     sku: row.sku,
@@ -160,6 +162,7 @@ function serializeListing(row: typeof products.$inferSelect, vendorCode: string)
     unitPrice: row.unitPrice,
     patronagePerUnit: row.patronagePerUnit,
     currency: row.currency,
+    imageUrl: env ? resolvePublicImageUrl(env, row.imageUrl) : row.imageUrl ?? null,
     listingStatus: row.listingStatus,
     isActive: row.isActive,
     updatedAt: row.updatedAt.toISOString(),

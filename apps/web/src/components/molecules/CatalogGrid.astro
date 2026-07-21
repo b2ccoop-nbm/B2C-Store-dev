@@ -6,19 +6,26 @@ import EmptyState from "@/components/atoms/EmptyState.astro";
 interface Props {
   items: CatalogItemPublic[];
   emptyTitle?: string;
+  /** compact = dense browse grid (default); comfortable = larger cards for highlights */
+  density?: "compact" | "comfortable";
 }
 
-const { items, emptyTitle = "No products found" } = Astro.props;
+const { items, emptyTitle = "No products found", density = "compact" } = Astro.props;
+
+const gridClass =
+  density === "compact"
+    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3"
+    : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4";
 ---
 
 {
   items.length === 0 ? (
     <EmptyState title={emptyTitle} description="Check back soon or try another category." />
   ) : (
-    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 list-none m-0 p-0">
+    <ul class:list={["grid list-none m-0 p-0", gridClass]}>
       {items.map((item) => (
         <li class="min-h-0">
-          <ProductCard item={item} />
+          <ProductCard item={item} density={density} />
         </li>
       ))}
     </ul>

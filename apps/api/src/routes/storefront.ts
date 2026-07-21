@@ -16,7 +16,7 @@ export async function getStorefront(c: Context<{ Bindings: WorkerEnv }>) {
 
   const { db, close } = createDb(dbUrl);
   try {
-    const storefront = await getStorefrontBySlug(db, slug);
+    const storefront = await getStorefrontBySlug(db, slug, c.env);
     return c.json(storefront);
   } catch (err) {
     if (err instanceof StorefrontError) {

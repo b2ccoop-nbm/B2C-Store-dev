@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { createDb } from "../db/client";
 import { products, vendors } from "../db/schema";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
+import { resolvePublicImageUrl } from "../lib/product-image-url";
 
 export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
   const dbUrl = resolveDatabaseUrl(c.env);
@@ -22,6 +23,7 @@ export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
         unitPrice: products.unitPrice,
         patronagePerUnit: products.patronagePerUnit,
         currency: products.currency,
+        imageUrl: products.imageUrl,
       })
       .from(products)
       .innerJoin(vendors, eq(products.vendorId, vendors.id))
@@ -37,6 +39,7 @@ export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
         unitPrice: row.unitPrice,
         patronagePerUnit: row.patronagePerUnit,
         currency: row.currency,
+        imageUrl: resolvePublicImageUrl(c.env, row.imageUrl),
       }))
       .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 

@@ -18,6 +18,10 @@ export type WorkerEnv = {
   DEV_ADMIN_SECRET?: string;
   /** Comma-separated merchant approver emails (default: b2ccoop@gmail.com, nmatunog@gmail.com) */
   MERCHANT_APPROVER_EMAILS?: string;
+  /** R2 bucket for product photos */
+  PRODUCT_IMAGES?: R2Bucket;
+  /** Public base URL for R2 objects, e.g. https://pub-xxxx.r2.dev */
+  PUBLIC_IMAGES_BASE_URL?: string;
 };
 
 export function resolveDatabaseUrl(env: WorkerEnv): string | null {

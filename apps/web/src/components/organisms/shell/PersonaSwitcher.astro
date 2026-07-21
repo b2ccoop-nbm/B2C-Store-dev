@@ -5,7 +5,7 @@ import { PERSONAS } from "@/stores/persona";
 <div class="relative" data-persona-switcher>
   <button
     type="button"
-    id="persona-trigger"
+    data-persona-trigger
     class="touch-target inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-neutral-50 max-w-[12rem] md:max-w-[14rem]"
     aria-haspopup="listbox"
     aria-expanded="false"
@@ -13,28 +13,28 @@ import { PERSONAS } from "@/stores/persona";
     aria-label="Account and persona"
   >
     <span
-      id="account-initials"
+      data-account-initials
       class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-caption font-bold"
       aria-hidden="true"
     >You</span>
     <span class="hidden md:flex min-w-0 flex-col text-left">
-      <span class="text-body-sm font-semibold text-neutral-900 truncate" id="persona-label">Customer</span>
-      <span class="text-caption text-neutral-500 truncate" id="account-detail">Browse as guest</span>
+      <span class="text-body-sm font-semibold text-neutral-900 truncate" data-persona-label>Customer</span>
+      <span class="text-caption text-neutral-500 truncate" data-account-detail>Browse as guest</span>
     </span>
     <svg class="hidden md:block shrink-0 text-neutral-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="m6 9 6 6 6-6"></path>
     </svg>
   </button>
   <ul
-    id="persona-menu"
+    data-persona-menu
     role="listbox"
     class="hidden absolute right-0 top-full z-50 mt-1 w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-neutral-200 bg-neutral-0 py-1 elevation-3"
     aria-label="Persona options"
   >
     <li class="px-4 py-3 border-b border-neutral-100" aria-hidden="true">
       <p class="text-caption font-semibold uppercase tracking-wide text-neutral-500 m-0">Signed in context</p>
-      <p class="text-body-sm font-semibold text-neutral-900 m-0 mt-1 truncate" id="account-summary">Customer</p>
-      <p class="text-caption text-neutral-500 m-0 mt-0.5" id="account-subtitle">Browse as guest</p>
+      <p class="text-body-sm font-semibold text-neutral-900 m-0 mt-1 truncate" data-account-summary>Customer</p>
+      <p class="text-caption text-neutral-500 m-0 mt-0.5" data-account-subtitle>Browse as guest</p>
       <a href="/profile" class="inline-block text-caption text-brand-600 font-semibold no-underline mt-2">Your profile →</a>
     </li>
     {

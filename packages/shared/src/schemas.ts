@@ -19,6 +19,7 @@ export const catalogItemPublicSchema = z.object({
   unitPrice: z.string(),
   patronagePerUnit: z.string(),
   currency: z.string(),
+  imageUrl: z.string().url().nullable().optional(),
 });
 
 export type CatalogItemPublic = z.infer<typeof catalogItemPublicSchema>;
@@ -157,6 +158,7 @@ export const merchantListingSchema = z.object({
   unitPrice: z.string(),
   patronagePerUnit: z.string(),
   currency: z.string(),
+  imageUrl: z.string().url().nullable().optional(),
   listingStatus: listingStatusSchema,
   isActive: z.boolean(),
   updatedAt: z.string(),

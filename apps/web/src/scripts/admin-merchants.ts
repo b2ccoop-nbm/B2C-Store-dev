@@ -35,6 +35,16 @@ function getIssuedToken(vendorCode: string): string | undefined {
   return getIssuedTokens()[vendorCode];
 }
 
+async function readApiJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(text.trim().slice(0, 200) || `Request failed (${res.status})`);
+  }
+}
+
 export function setupAdminMerchants(apiBase = API_BASE): void {
   const loadAppsBtn = document.getElementById("load-applications");
   const appsList = document.getElementById("applications-list");
@@ -356,23 +366,28 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
               headers: h,
               body: JSON.stringify({}),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? "Approve failed");
+            const data = await readApiJson(res);
+            if (!res.ok) throw new Error(String(data.error ?? "Approve failed"));
 
             const credentials: ApprovalCredentials = {
-              name: data.vendor.name,
-              code: data.vendor.code,
-              slug: data.vendor.slug,
-              accessToken: data.accessToken,
+              name: String((data.vendor as { name?: string })?.name ?? ""),
+              code: String((data.vendor as { code?: string })?.code ?? ""),
+              slug: String((data.vendor as { slug?: string })?.slug ?? ""),
+              accessToken: String(data.accessToken ?? ""),
             };
 
             if (credentialsBox instanceof HTMLElement) {
-              credentialsBox.innerHTML = renderCredentialsCard(
-                "Generated store credentials",
-                "Share vendor code and access token with the seller. They enter both at /sell/apply.",
-                credentials,
-                { variant: "success" },
-              );
+              const note =
+                typeof data.firebaseLinkNote === "string"
+                  ? `<p class="text-body-sm text-amber-800 m-0 mt-3">${data.firebaseLinkNote}</p>`
+                  : "";
+              credentialsBox.innerHTML =
+                renderCredentialsCard(
+                  "Generated store credentials",
+                  "Share vendor code and access token with the seller. They enter both at /sell/apply.",
+                  credentials,
+                  { variant: "success" },
+                ) + note;
               credentialsBox.classList.remove("hidden");
               bindCopyButtons(credentialsBox);
             }

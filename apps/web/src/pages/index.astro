@@ -24,8 +24,8 @@ const categorySet = new Set(Object.keys(groupByCategory(items)).map((c) => categ
 const chips = CATEGORY_SHORTCUTS.filter(
   (c) => c.slug === "products" || categorySet.has(c.slug),
 );
-const featured = items.slice(0, 6);
-const memberItems = items.filter((i) => i.vendorCode.startsWith("B2C-")).slice(0, 6);
+const featured = items.slice(0, 10);
+const memberItems = items.filter((i) => i.vendorCode.startsWith("B2C-")).slice(0, 10);
 ---
 
 <MarketplaceLayout title="Home" description="B2CCoop cooperative store — shop local products">

@@ -14,6 +14,9 @@ export function securityHeaders() {
   return async (c: Context, next: Next) => {
     await next();
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key === "Cross-Origin-Resource-Policy" && c.req.path.startsWith("/media/")) {
+        continue;
+      }
       c.header(key, value);
     }
   };

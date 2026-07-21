@@ -86,6 +86,7 @@ export function setupStoreAdminSignIn(
     }
 
     onAuthChange?.(state);
+    window.dispatchEvent(new CustomEvent("persona-change"));
   }
 
   subscribeMemberAuth((user) => {

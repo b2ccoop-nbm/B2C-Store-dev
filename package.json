@@ -19,6 +19,7 @@
     "setup": "bash scripts/setup-local.sh",
     "check": "bash scripts/check-dev.sh",
     "secret:admin": "bash scripts/put-admin-secret.sh",
+    "setup:r2": "bash scripts/setup-product-images-r2.sh",
     "deploy:pages": "bash scripts/deploy-pages.sh",
     "smoke:accounting": "bash scripts/smoke-accounting.sh",
     "smoke:merchant": "bash scripts/smoke-merchant-flow.sh"

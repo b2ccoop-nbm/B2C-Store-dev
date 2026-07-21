@@ -25,6 +25,11 @@ import Input from "@/components/atoms/Input.astro";
 <Card id="admin-signed-in-card" class="hidden max-w-lg mb-8">
   <p class="text-caption font-semibold uppercase text-accent-600 m-0">Signed in</p>
   <p id="admin-signed-in-label" class="text-body font-semibold mt-2 m-0" />
+  <p class="text-body-sm text-neutral-500 m-0 mt-2">
+    This is the <strong class="font-semibold text-neutral-700">Firebase account</strong> active in this browser for
+    store admin — not your PMES staff / superuser password on b2ccoop.com. To use a different approver (e.g. Admin vs
+    BOD Chair), sign out and sign in again with that email.
+  </p>
   <Button type="button" variant="secondary" id="admin-sign-out-btn" class="mt-4">Sign out</Button>
 </Card>
 

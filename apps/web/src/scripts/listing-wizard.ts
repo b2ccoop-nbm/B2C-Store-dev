@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/api";
-import { getMerchantVendorCode, merchantHeaders } from "@/lib/merchant-session";
+import { getMerchantVendorCode, merchantAuthHeaders, merchantHeaders } from "@/lib/merchant-session";
 
 const DRAFT_KEY = "b2c_listing_wizard_draft";
 
@@ -29,6 +29,8 @@ export function setupListingWizard(apiBase = API_BASE): void {
   let step = 1;
   const totalSteps = 2;
   const draft = loadDraft();
+  let imageFile: File | null = null;
+  let imagePreviewUrl: string | null = null;
 
   const stepLabel = document.getElementById("wizard-step-label");
   const step1 = document.getElementById("wizard-step-1");
@@ -39,6 +41,8 @@ export function setupListingWizard(apiBase = API_BASE): void {
   const errorEl = document.getElementById("wizard-error");
   const successEl = document.getElementById("wizard-success");
   const reviewEl = document.getElementById("wizard-review");
+  const imageInput = document.getElementById("listing-image") as HTMLInputElement | null;
+  const imagePreview = document.getElementById("listing-image-preview") as HTMLImageElement | null;
 
   const fields = {
     sku: document.getElementById("listing-sku") as HTMLInputElement | null,
@@ -53,6 +57,47 @@ export function setupListingWizard(apiBase = API_BASE): void {
   if (fields.category) fields.category.value = draft.category;
   if (fields.unitPrice) fields.unitPrice.value = draft.unitPrice;
   if (fields.patronage) fields.patronage.value = draft.patronagePerUnit;
+
+  function clearImagePreview(): void {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      imagePreviewUrl = null;
+    }
+    imageFile = null;
+    if (imagePreview) {
+      imagePreview.src = "";
+      imagePreview.classList.add("hidden");
+    }
+  }
+
+  imageInput?.addEventListener("change", () => {
+    clearImagePreview();
+    const file = imageInput.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      if (errorEl) {
+        errorEl.textContent = "Image must be 2 MB or smaller.";
+        errorEl.classList.remove("hidden");
+      }
+      imageInput.value = "";
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      if (errorEl) {
+        errorEl.textContent = "Use a JPEG, PNG, or WebP image.";
+        errorEl.classList.remove("hidden");
+      }
+      imageInput.value = "";
+      return;
+    }
+    errorEl?.classList.add("hidden");
+    imageFile = file;
+    imagePreviewUrl = URL.createObjectURL(file);
+    if (imagePreview) {
+      imagePreview.src = imagePreviewUrl;
+      imagePreview.classList.remove("hidden");
+    }
+  });
 
   function readDraft(): Draft {
     return {
@@ -97,6 +142,9 @@ export function setupListingWizard(apiBase = API_BASE): void {
     if (step === totalSteps && reviewEl) {
       const d = readDraft();
       const price = parsePrice(d.unitPrice) ?? 0;
+      const photoNote = imageFile
+        ? `<div><dt class="text-neutral-500 inline">Photo:</dt> <dd class="inline">${imageFile.name}</dd></div>`
+        : `<div><dt class="text-neutral-500 inline">Photo:</dt> <dd class="inline text-neutral-500">None (category icon will show)</dd></div>`;
       reviewEl.innerHTML = `
         <dl class="grid gap-2 text-body-sm m-0">
           <div><dt class="text-neutral-500 inline">SKU:</dt> <dd class="inline font-mono">${d.sku}</dd></div>
@@ -104,6 +152,7 @@ export function setupListingWizard(apiBase = API_BASE): void {
           <div><dt class="text-neutral-500 inline">Category:</dt> <dd class="inline">${d.category}</dd></div>
           <div><dt class="text-neutral-500 inline">Price:</dt> <dd class="inline text-price text-brand-600">₱${price.toFixed(2)}</dd></div>
           <div><dt class="text-neutral-500 inline">Patronage / unit:</dt> <dd class="inline">₱${Number(d.patronagePerUnit).toFixed(2)}</dd></div>
+          ${photoNote}
         </dl>
         <p class="text-caption text-neutral-500 mt-4 m-0">Submitted listings are reviewed by coop officers before appearing in the marketplace.</p>`;
     }
@@ -181,9 +230,30 @@ export function setupListingWizard(apiBase = API_BASE): void {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
 
+      let imageWarning = "";
+      if (imageFile) {
+        const form = new FormData();
+        form.append("image", imageFile);
+        const uploadRes = await fetch(
+          `${apiBase}/merchant/listings/${encodeURIComponent(d.sku)}/image`,
+          {
+            method: "POST",
+            headers: merchantAuthHeaders(),
+            body: form,
+          },
+        );
+        const uploadData = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          imageWarning = ` Listing saved, but photo upload failed: ${uploadData.error ?? "upload error"}.`;
+        }
+      }
+
       sessionStorage.removeItem(DRAFT_KEY);
+      clearImagePreview();
+      if (imageInput) imageInput.value = "";
+
       if (successEl) {
-        successEl.innerHTML = `Listing submitted for review (<code>${data.listing.sku}</code>). <a href="/sell/listings" class="text-brand-600 font-semibold">View your listings →</a>`;
+        successEl.innerHTML = `Listing submitted for review (<code>${data.listing.sku}</code>).${imageWarning} <a href="/sell/listings" class="text-brand-600 font-semibold">View your listings →</a>`;
         successEl.classList.remove("hidden");
       }
       step1?.classList.add("hidden");
