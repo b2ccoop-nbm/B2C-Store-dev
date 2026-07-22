@@ -9,7 +9,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 <MarketplaceLayout title="Cart">
   <header class="mb-6">
     <h1 class="text-display m-0">Your cart</h1>
-    <p class="text-body-sm text-neutral-500 mt-1 m-0">Pay at pickup when you collect your order.</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">Delivery is the default. Pay when your order arrives, or pick up from the seller if they offer it.</p>
   </header>
 
   <div id="cart-root" aria-live="polite">
@@ -20,6 +20,64 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     <h2 class="text-title-sm m-0 mb-1">Checkout</h2>
     <p class="text-body-sm text-neutral-500 m-0 mb-4">No account needed — we’ll email your receipt.</p>
     <form id="checkout-form" class="max-w-md space-y-4">
+      <fieldset id="fulfillment-options" class="border border-neutral-200 rounded-xl p-4 m-0 space-y-3">
+        <legend class="text-body-sm font-semibold px-1">How do you want to receive your order?</legend>
+        <label class="flex items-start gap-3 text-body-sm cursor-pointer">
+          <input type="radio" name="fulfillmentMode" value="delivery" checked class="mt-1" />
+          <span><strong>Delivery</strong> — we’ll bring it to your address (pay on delivery)</span>
+        </label>
+        <label class="flex items-start gap-3 text-body-sm cursor-pointer">
+          <input type="radio" name="fulfillmentMode" value="merchant_pickup" class="mt-1" />
+          <span><strong>Pick up from seller</strong> — only if the merchant registered a pickup point</span>
+        </label>
+      </fieldset>
+
+      <div id="pickup-summary" class="hidden rounded-xl border border-merchant-200 bg-merchant-50 p-4 text-body-sm" />
+
+      <div id="delivery-address-fields" class="space-y-4">
+        <p class="text-body-sm font-semibold m-0">Delivery address</p>
+        <label class="block">
+          <span class="text-body-sm font-medium">Recipient name</span>
+          <input type="text" name="recipientName" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+        </label>
+        <label class="block">
+          <span class="text-body-sm font-medium">Mobile number</span>
+          <input type="tel" name="deliveryPhone" inputmode="tel" placeholder="09XX XXX XXXX" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+        </label>
+        <label class="block">
+          <span class="text-body-sm font-medium">Street / building</span>
+          <input type="text" name="addressLine1" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+        </label>
+        <label class="block">
+          <span class="text-body-sm font-medium">Unit / floor (optional)</span>
+          <input type="text" name="addressLine2" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+        </label>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="block">
+            <span class="text-body-sm font-medium">Barangay</span>
+            <input type="text" name="barangay" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+          </label>
+          <label class="block">
+            <span class="text-body-sm font-medium">City</span>
+            <input type="text" name="city" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+          </label>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="block">
+            <span class="text-body-sm font-medium">Province</span>
+            <input type="text" name="province" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+          </label>
+          <label class="block">
+            <span class="text-body-sm font-medium">Postal code</span>
+            <input type="text" name="postalCode" class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-body-sm font-medium">Delivery notes (optional)</span>
+          <input type="text" name="deliveryNotes" placeholder="Gate code, landmarks, etc." class="mt-1.5 w-full min-h-touch px-4 rounded-lg border border-neutral-200 text-body" />
+        </label>
+      </div>
+
       <label class="block">
         <span class="text-body-sm font-medium">Email</span>
         <span class="block text-caption text-neutral-500 mt-0.5">We’ll send your receipt here</span>
@@ -49,7 +107,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
         )
       }
       <Button type="submit" variant="primary" fullWidth id="checkout-submit">
-        Place order — pay at pickup
+        Place order — pay on delivery
       </Button>
     </form>
     <p id="checkout-error" class="hidden text-body-sm text-danger-600 mt-3 m-0" role="alert" />

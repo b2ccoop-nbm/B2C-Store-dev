@@ -1,121 +1,24 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { CheckoutRequest } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
-import { orderLines, orders, patronageAccruals, products, vendors } from "../db/schema";
+import { orderLines, orders, patronageAccruals } from "../db/schema";
 import { normalizeEmail, resolveMemberByEmail } from "../lib/member-resolve";
 import { createPaymongoCheckoutSession, paymongoConfigured } from "../integrations/paymongo-client";
 import type { WorkerEnv } from "../env";
+import { CheckoutError, resolveCheckout } from "./checkout-resolver";
 
-type ResolvedLine = {
-  sku: string;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  lineGross: number;
-  lineSales: number;
-  linePayable: number;
-  lineCogs: number;
-  linePatronage: number;
-};
+export { CheckoutError } from "./checkout-resolver";
 
-export class CheckoutError extends Error {
-  constructor(
-    message: string,
-    readonly status: 400 | 404 | 409 | 502 | 503 = 400,
-  ) {
-    super(message);
-    this.name = "CheckoutError";
-  }
-}
-
-async function resolveCatalogLines(db: StoreDatabase, items: CheckoutRequest["items"]) {
-  const lines: ResolvedLine[] = [];
-  let vendorCode: string | null = null;
-  let grossAmount = 0;
-  let salesAmount = 0;
-  let vendorPayableAmount = 0;
-  let cogsAmount = 0;
-  let patronageAmount = 0;
-
-  for (const item of items) {
-    const sku = item.sku.trim().toUpperCase();
-    const rows = await db
-      .select({
-        vendorCode: vendors.code,
-        sku: products.sku,
-        name: products.name,
-        unitPrice: products.unitPrice,
-        salesPerUnit: products.salesPerUnit,
-        vendorPayablePerUnit: products.vendorPayablePerUnit,
-        cogsPerUnit: products.cogsPerUnit,
-        patronagePerUnit: products.patronagePerUnit,
-        isActive: products.isActive,
-      })
-      .from(products)
-      .innerJoin(vendors, eq(products.vendorId, vendors.id))
-      .where(and(eq(products.sku, sku), eq(products.isActive, true)))
-      .limit(1);
-
-    const row = rows[0];
-    if (!row) {
-      throw new CheckoutError(`Unknown product SKU: ${item.sku}`, 404);
-    }
-
-    if (vendorCode && vendorCode !== row.vendorCode) {
-      throw new CheckoutError(
-        "Checkout supports one vendor per order — split carts by vendor",
-        400,
-      );
-    }
-    vendorCode = row.vendorCode;
-
-    const unitPrice = Number(row.unitPrice);
-    const salesPerUnit = Number(row.salesPerUnit);
-    const vendorPayablePerUnit = Number(row.vendorPayablePerUnit);
-    const cogsPerUnit = Number(row.cogsPerUnit);
-    const patronagePerUnit = Number(row.patronagePerUnit);
-    const qty = item.quantity;
-
-    const lineGross = unitPrice * qty;
-    const lineSales = salesPerUnit * qty;
-    const linePayable = vendorPayablePerUnit * qty;
-    const lineCogs = cogsPerUnit * qty;
-    const linePatronage = patronagePerUnit * qty;
-
-    grossAmount += lineGross;
-    salesAmount += lineSales;
-    vendorPayableAmount += linePayable;
-    cogsAmount += lineCogs;
-    patronageAmount += linePatronage;
-
-    lines.push({
-      sku: row.sku,
-      name: row.name,
-      quantity: qty,
-      unitPrice,
-      lineGross,
-      lineSales,
-      linePayable,
-      lineCogs,
-      linePatronage,
-    });
-  }
-
-  if (!vendorCode || grossAmount <= 0) {
-    throw new CheckoutError("Cart is empty", 400);
-  }
-
-  const names = lines.map((l) => `${l.quantity}× ${l.name}`).join(", ");
-  return {
-    vendorCode,
-    lines,
-    grossAmount: grossAmount.toFixed(2),
-    salesAmount: salesAmount.toFixed(2),
-    vendorPayableAmount: vendorPayableAmount.toFixed(2),
-    cogsAmount: cogsAmount.toFixed(2),
-    patronageAmount: patronageAmount.toFixed(2),
-    memo: `Coop store — ${names}`,
-  };
+function formatAddress(address: NonNullable<CheckoutRequest["deliveryAddress"]>): string {
+  const parts = [
+    address.line1,
+    address.line2,
+    address.barangay,
+    address.city,
+    address.province,
+    address.postalCode,
+  ].filter(Boolean);
+  return parts.join(", ");
 }
 
 export async function createCheckoutOrder(
@@ -125,8 +28,15 @@ export async function createCheckoutOrder(
 ) {
   const email = normalizeEmail(dto.email);
   const member = await resolveMemberByEmail(email, env);
-  const resolved = await resolveCatalogLines(db, dto.items);
+  const resolved = await resolveCheckout(db, dto.items);
+  const fulfillmentMode = dto.fulfillmentMode ?? "delivery";
   const paymentMethod = dto.paymentMethod ?? "pickup";
+
+  if (fulfillmentMode === "merchant_pickup") {
+    if (!resolved.pickupAvailable || !resolved.pickup) {
+      throw new CheckoutError("Merchant pickup is not available for this store", 400);
+    }
+  }
 
   if (paymentMethod === "online" && !paymongoConfigured(env)) {
     throw new CheckoutError("Online payment is not configured (PAYMONGO_SECRET_KEY)", 503);
@@ -134,7 +44,16 @@ export async function createCheckoutOrder(
 
   const orderId = crypto.randomUUID();
   const externalId = `order:${orderId}`;
-  const initialStatus = paymentMethod === "online" ? "PENDING_PAYMENT" : "PENDING_PICKUP";
+  let initialStatus: typeof orders.$inferInsert.status;
+  if (paymentMethod === "online") {
+    initialStatus = "PENDING_PAYMENT";
+  } else if (fulfillmentMode === "merchant_pickup") {
+    initialStatus = "PENDING_PICKUP";
+  } else {
+    initialStatus = "PENDING_DELIVERY";
+  }
+
+  const deliveryFeeAmount = fulfillmentMode === "delivery" ? resolved.deliveryFee : "0.00";
 
   const [order] = await db
     .insert(orders)
@@ -144,8 +63,12 @@ export async function createCheckoutOrder(
       guestEmail: email,
       participantId: member.participantId,
       vendorCode: resolved.vendorCode,
+      fulfillmentMode,
       status: initialStatus,
       grossAmount: resolved.grossAmount,
+      deliveryFeeAmount,
+      deliveryAddress:
+        fulfillmentMode === "delivery" && dto.deliveryAddress ? dto.deliveryAddress : null,
       salesAmount: resolved.salesAmount,
       vendorPayableAmount: resolved.vendorPayableAmount,
       cogsAmount: resolved.cogsAmount,
@@ -154,8 +77,11 @@ export async function createCheckoutOrder(
       metadata: {
         channel: "store_checkout",
         paymentMethod,
+        fulfillmentMode,
         displayName: dto.displayName ?? member.displayName,
         memberIdNo: member.memberIdNo,
+        deliveryCapApplied: resolved.deliveryCapApplied,
+        totalAmount: resolved.totalAmount,
       },
     })
     .returning();
@@ -169,6 +95,7 @@ export async function createCheckoutOrder(
       unitPrice: line.unitPrice.toFixed(2),
       lineGross: line.lineGross.toFixed(2),
       linePatronage: line.linePatronage.toFixed(2),
+      lineDeliveryFee: fulfillmentMode === "delivery" ? line.lineDeliveryFee : "0.00",
     });
   }
 
@@ -183,9 +110,24 @@ export async function createCheckoutOrder(
     });
   }
 
+  const totalAmount =
+    fulfillmentMode === "delivery" ? resolved.totalAmount : resolved.merchandiseSubtotal;
+
+  const baseResponse = {
+    orderId: order.id,
+    externalId: order.externalId,
+    status: order.status,
+    fulfillmentMode,
+    grossAmount: order.grossAmount,
+    deliveryFeeAmount: order.deliveryFeeAmount,
+    totalAmount,
+    patronageAmount: order.patronageAmount,
+    currency: order.currency,
+  };
+
   if (paymentMethod === "online") {
     const storeBase = (env.PUBLIC_STORE_URL ?? "http://localhost:5175").replace(/\/$/, "");
-    const grossCentavos = Math.round(Number(resolved.grossAmount) * 100);
+    const totalCentavos = Math.round(Number(resolved.totalAmount) * 100);
     const paymongo = await createPaymongoCheckoutSession(env, {
       referenceNumber: externalId,
       description: resolved.memo,
@@ -194,7 +136,7 @@ export async function createCheckoutOrder(
       lineItems: [
         {
           name: resolved.memo.slice(0, 120),
-          amountCentavos: grossCentavos,
+          amountCentavos: totalCentavos,
           quantity: 1,
         },
       ],
@@ -214,8 +156,11 @@ export async function createCheckoutOrder(
         metadata: {
           channel: "store_checkout",
           paymentMethod,
+          fulfillmentMode,
           displayName: dto.displayName ?? member.displayName,
           memberIdNo: member.memberIdNo,
+          deliveryCapApplied: resolved.deliveryCapApplied,
+          totalAmount: resolved.totalAmount,
           paymongoSessionId: paymongo.sessionId,
         },
         updatedAt: new Date(),
@@ -223,23 +168,29 @@ export async function createCheckoutOrder(
       .where(eq(orders.id, orderId));
 
     return {
-      orderId: order.id,
-      externalId: order.externalId,
-      status: order.status,
-      grossAmount: order.grossAmount,
-      patronageAmount: order.patronageAmount,
-      currency: order.currency,
+      ...baseResponse,
       checkoutUrl: paymongo.checkoutUrl,
     };
   }
 
+  if (fulfillmentMode === "merchant_pickup" && resolved.pickup) {
+    const pickupParts = [
+      resolved.pickup.address,
+      resolved.pickup.landmark ? `Landmark: ${resolved.pickup.landmark}` : null,
+      resolved.pickup.hours ? `Hours: ${resolved.pickup.hours}` : null,
+      resolved.pickup.phone ? `Contact: ${resolved.pickup.phone}` : null,
+      resolved.pickup.instructions,
+    ].filter(Boolean);
+
+    return {
+      ...baseResponse,
+      pickupNote: `Pay when you pick up at ${resolved.vendorName}. ${pickupParts.join(" · ")}`,
+    };
+  }
+
+  const addressText = dto.deliveryAddress ? formatAddress(dto.deliveryAddress) : "your address";
   return {
-    orderId: order.id,
-    externalId: order.externalId,
-    status: order.status,
-    grossAmount: order.grossAmount,
-    patronageAmount: order.patronageAmount,
-    currency: order.currency,
-    pickupNote: "Pay at the coop pickup counter when you collect your order.",
+    ...baseResponse,
+    fulfillmentNote: `Delivery to ${addressText}. Pay ${resolved.totalAmount} PHP when your order arrives (includes ${deliveryFeeAmount} delivery).`,
   };
 }

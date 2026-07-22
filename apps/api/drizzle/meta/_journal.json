@@ -57,6 +57,13 @@
       "when": 1781016000000,
       "tag": "0007_commerce_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781019600000,
+      "tag": "0008_checkout_delivery",
+      "breakpoints": true
     }
   ]
 }

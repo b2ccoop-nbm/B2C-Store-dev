@@ -6,7 +6,7 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-const ACTIVE_STATUSES = new Set(["PENDING_PICKUP", "PENDING_PAYMENT", "PAID", "FAILED"]);
+const ACTIVE_STATUSES = new Set(["PENDING_DELIVERY", "PENDING_PICKUP", "PENDING_PAYMENT", "PAID", "FAILED"]);
 const COMPLETED_STATUSES = new Set(["POSTED_TO_LEDGER", "CANCELLED"]);
 
 export async function listOrdersByEmail(db: StoreDatabase, email: string) {

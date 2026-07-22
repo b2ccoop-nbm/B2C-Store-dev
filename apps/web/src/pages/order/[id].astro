@@ -32,12 +32,32 @@ const statusVariant =
     ? "success"
     : order?.status === "FAILED"
       ? "danger"
-      : order?.status === "PENDING_PICKUP"
+      : order?.status === "PENDING_PICKUP" || order?.status === "PENDING_DELIVERY"
         ? "warning"
         : "neutral";
 
 const showStaffConfirm =
-  order?.status === "PENDING_PICKUP" || order?.status === "FAILED";
+  order?.status === "PENDING_PICKUP" ||
+  order?.status === "PENDING_DELIVERY" ||
+  order?.status === "FAILED";
+
+function formatAddress(order: OrderDetail): string {
+  const a = order.deliveryAddress;
+  if (!a) return "";
+  return [a.line1, a.line2, a.barangay, a.city, a.province, a.postalCode].filter(Boolean).join(", ");
+}
+
+const statusMessage = order
+  ? order.status === "PENDING_DELIVERY"
+    ? "Your order will be delivered to the address below. Pay when it arrives."
+    : order.status === "PENDING_PICKUP"
+      ? "Pick up from the seller and pay when you collect your order."
+      : order.status === "POSTED_TO_LEDGER"
+        ? "Payment recorded. Thank you for shopping with your coop."
+        : order.status === "FAILED"
+          ? "Payment was received but confirmation could not be completed — staff can retry below."
+          : "Order status updates will appear here."
+  : "";
 ---
 
 <MarketplaceLayout title={order ? `Order ${order.orderId.slice(0, 8)}…` : "Order"} hideBottomNav>
@@ -51,19 +71,9 @@ const showStaffConfirm =
       <>
         <header class="mb-6">
           <p class="text-caption text-neutral-500 uppercase tracking-wide m-0">Order receipt</p>
-          <h1 class="text-display text-brand-600 m-0 mt-1">{formatPhp(order.grossAmount)}</h1>
+          <h1 class="text-display text-brand-600 m-0 mt-1">{formatPhp(order.totalAmount)}</h1>
           <Badge variant={statusVariant} class="mt-2">{orderStatusLabel(order.status)}</Badge>
-          <p class="text-body text-neutral-500 mt-3 m-0">
-            {
-              order.status === "PENDING_PICKUP"
-                ? "Bring this order reference to the counter and pay when you pick up."
-                : order.status === "POSTED_TO_LEDGER"
-                  ? "Payment recorded. Thank you for shopping with your coop."
-                  : order.status === "FAILED"
-                    ? "Payment was received but confirmation could not be completed — staff can retry below."
-                    : "Order status updates will appear here."
-            }
-          </p>
+          <p class="text-body text-neutral-500 mt-3 m-0">{statusMessage}</p>
         </header>
 
         <Card class="mb-6">
@@ -74,8 +84,24 @@ const showStaffConfirm =
             <dd class="m-0">{order.guestEmail}</dd>
             <dt class="text-neutral-500">Vendor</dt>
             <dd class="m-0">{order.vendorCode}</dd>
+            <dt class="text-neutral-500">Fulfillment</dt>
+            <dd class="m-0 capitalize">{order.fulfillmentMode.replace("_", " ")}</dd>
           </dl>
         </Card>
+
+        {
+          order.fulfillmentMode === "delivery" && order.deliveryAddress && (
+            <Card class="mb-6">
+              <h2 class="text-title-sm m-0 mb-3">Delivery to</h2>
+              <p class="text-body-sm m-0 font-semibold">{order.deliveryAddress.recipientName}</p>
+              <p class="text-body-sm m-0 mt-1">{formatAddress(order)}</p>
+              <p class="text-body-sm text-neutral-500 m-0 mt-2">{order.deliveryAddress.phone}</p>
+              {order.deliveryAddress.notes && (
+                <p class="text-caption text-neutral-500 m-0 mt-2">{order.deliveryAddress.notes}</p>
+              )}
+            </Card>
+          )
+        }
 
         <Card class="mb-6">
           <h2 class="text-title-sm m-0 mb-3">Items</h2>
@@ -91,14 +117,32 @@ const showStaffConfirm =
               ))
             }
           </ul>
+          <dl class="grid gap-2 mt-4 pt-4 border-t border-neutral-200 text-body-sm m-0">
+            <div class="flex justify-between">
+              <dt class="text-neutral-500">Subtotal</dt>
+              <dd class="m-0">{formatPhp(order.grossAmount)}</dd>
+            </div>
+            {
+              Number(order.deliveryFeeAmount) > 0 && (
+                <div class="flex justify-between">
+                  <dt class="text-neutral-500">Delivery</dt>
+                  <dd class="m-0">{formatPhp(order.deliveryFeeAmount)}</dd>
+                </div>
+              )
+            }
+            <div class="flex justify-between text-title-sm">
+              <dt class="m-0">Total</dt>
+              <dd class="m-0">{formatPhp(order.totalAmount)}</dd>
+            </div>
+          </dl>
         </Card>
 
         {
-          (order.status === "PENDING_PICKUP" || order.status === "FAILED") && (
+          showStaffConfirm && (
             <div id="staff-confirm" data-order-id={order.orderId} data-api-base={API_BASE}>
             <Card class="border-accent-600 bg-accent-50">
               <h2 class="text-title-sm m-0 mb-2">
-                {order.status === "FAILED" ? "Counter — retry payment" : "Counter — confirm payment"}
+                {order.status === "FAILED" ? "Staff — retry payment" : "Staff — confirm payment"}
               </h2>
               {order.accountingError && (
                 <p class="text-body-sm text-danger-600 m-0 mb-3">Last error: {order.accountingError}</p>
@@ -113,7 +157,7 @@ const showStaffConfirm =
                 />
               </label>
               <Button type="button" variant="staff" id="confirm-pickup">
-                {order.status === "FAILED" ? "Retry confirm payment" : "Confirm payment"}
+                {order.status === "FAILED" ? "Retry confirm payment" : "Confirm payment received"}
               </Button>
               <p id="admin-msg" class="hidden text-body-sm mt-3 m-0" role="status" />
             </Card>

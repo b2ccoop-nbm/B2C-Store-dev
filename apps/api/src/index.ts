@@ -49,6 +49,7 @@ import {
 } from "./routes/seller-applications";
 import { getStorefront } from "./routes/storefront";
 import { postCheckout } from "./routes/checkout";
+import { postCheckoutQuote } from "./routes/checkout-quote";
 import { getDevFixtures } from "./routes/dev-fixtures";
 import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activity";
 import { getOrder } from "./routes/orders";
@@ -74,6 +75,7 @@ app.get("/", (c) =>
       "GET /catalog",
       "GET /storefront/:slug",
       "POST /checkout",
+      "POST /checkout/quote",
       "GET /orders/:id",
       "GET /orders?email=",
       "GET /members/store-patronage?email=",
@@ -142,6 +144,7 @@ app.get("/settings/commerce", (c) => getPublicCommerceSettings(c));
 app.get("/media/*", (c) => getProductMedia(c));
 app.get("/storefront/:slug", (c) => getStorefront(c));
 app.post("/checkout", (c) => postCheckout(c));
+app.post("/checkout/quote", (c) => postCheckoutQuote(c));
 app.get("/orders", (c) => getOrdersByEmail(c));
 app.get("/orders/:id", (c) => getOrder(c));
 app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));

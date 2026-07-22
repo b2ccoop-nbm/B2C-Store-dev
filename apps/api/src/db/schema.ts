@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const orderStatusEnum = pgEnum("order_status", [
+  "PENDING_DELIVERY",
   "PENDING_PICKUP",
   "PENDING_PAYMENT",
   "PAID",
@@ -43,6 +44,8 @@ export const listingStatusEnum = pgEnum("listing_status", [
 export const sellerKindEnum = pgEnum("seller_kind", ["COOP", "MEMBER", "PARTNER"]);
 
 export const deliveryTierEnum = pgEnum("delivery_tier", ["standard", "bulky", "remote"]);
+
+export const fulfillmentModeEnum = pgEnum("fulfillment_mode", ["delivery", "merchant_pickup"]);
 
 export const platformSettings = pgTable("platform_settings", {
   id: varchar("id", { length: 32 }).primaryKey().default("default"),
@@ -152,8 +155,11 @@ export const orders = pgTable("orders", {
   guestEmail: varchar("guest_email", { length: 255 }),
   participantId: uuid("participant_id"),
   vendorCode: varchar("vendor_code", { length: 64 }).notNull(),
-  status: orderStatusEnum("status").notNull().default("PENDING_PICKUP"),
+  fulfillmentMode: fulfillmentModeEnum("fulfillment_mode").notNull().default("delivery"),
+  status: orderStatusEnum("status").notNull().default("PENDING_DELIVERY"),
   grossAmount: numeric("gross_amount", { precision: 14, scale: 2 }).notNull(),
+  deliveryFeeAmount: numeric("delivery_fee_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  deliveryAddress: jsonb("delivery_address"),
   salesAmount: numeric("sales_amount", { precision: 14, scale: 2 }).notNull(),
   vendorPayableAmount: numeric("vendor_payable_amount", { precision: 14, scale: 2 }).notNull(),
   cogsAmount: numeric("cogs_amount", { precision: 14, scale: 2 }).notNull().default("0"),
@@ -176,6 +182,7 @@ export const orderLines = pgTable("order_lines", {
   unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull(),
   lineGross: numeric("line_gross", { precision: 14, scale: 2 }).notNull(),
   linePatronage: numeric("line_patronage", { precision: 14, scale: 2 }).notNull().default("0"),
+  lineDeliveryFee: numeric("line_delivery_fee", { precision: 14, scale: 2 }).notNull().default("0"),
 });
 
 export const patronageAccruals = pgTable("patronage_accruals", {

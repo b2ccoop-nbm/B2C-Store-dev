@@ -24,8 +24,9 @@ export const catalogItemPublicSchema = z.object({
 
 export type CatalogItemPublic = z.infer<typeof catalogItemPublicSchema>;
 
-/** Order lifecycle — pay on pickup (MVP) or PayMongo online (Phase 2). */
+/** Order lifecycle — delivery, pickup, or PayMongo online. */
 export const orderStatusSchema = z.enum([
+  "PENDING_DELIVERY",
   "PENDING_PICKUP",
   "PENDING_PAYMENT",
   "PAID",
@@ -36,6 +37,23 @@ export const orderStatusSchema = z.enum([
 
 export const paymentMethodSchema = z.enum(["pickup", "online"]);
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
+
+export const fulfillmentModeSchema = z.enum(["delivery", "merchant_pickup"]);
+export type FulfillmentMode = z.infer<typeof fulfillmentModeSchema>;
+
+export const deliveryAddressSchema = z.object({
+  recipientName: z.string().min(2).max(255),
+  phone: z.string().min(7).max(32),
+  line1: z.string().min(5).max(512),
+  line2: z.string().max(255).optional(),
+  barangay: z.string().max(128).optional(),
+  city: z.string().min(2).max(128),
+  province: z.string().max(128).optional(),
+  postalCode: z.string().max(16).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export type DeliveryAddress = z.infer<typeof deliveryAddressSchema>;
 
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
@@ -50,17 +68,65 @@ export const checkoutItemSchema = z.object({
   quantity: z.number().int().min(1).max(99),
 });
 
-export const checkoutRequestSchema = z.object({
-  email: z.string().email().max(255),
-  displayName: z.string().min(1).max(255).optional(),
+export const checkoutQuoteRequestSchema = z.object({
   items: z.array(checkoutItemSchema).min(1).max(50),
-  /** Defaults to pay-on-pickup. `online` requires PayMongo keys on the API. */
-  paymentMethod: paymentMethodSchema.default("pickup"),
-  /** Cloudflare Turnstile — required when TURNSTILE_SECRET_KEY is set on the API. */
-  turnstileToken: z.string().min(1).max(2048).optional(),
-  /** Firebase ID token — optional member sign-in; email must match token. */
-  firebaseIdToken: z.string().min(1).max(8192).optional(),
 });
+
+export type CheckoutQuoteRequest = z.infer<typeof checkoutQuoteRequestSchema>;
+
+export const checkoutQuoteLineSchema = z.object({
+  sku: z.string(),
+  name: z.string(),
+  quantity: z.number(),
+  unitPrice: z.string(),
+  deliveryPerItem: z.string(),
+  lineDeliveryFee: z.string(),
+});
+
+export const checkoutQuoteResponseSchema = z.object({
+  ok: z.literal(true),
+  vendorCode: z.string(),
+  lines: z.array(checkoutQuoteLineSchema),
+  merchandiseSubtotal: z.string(),
+  deliverySubtotal: z.string(),
+  deliveryFee: z.string(),
+  deliveryCapApplied: z.boolean(),
+  totalAmount: z.string(),
+  pickupAvailable: z.boolean(),
+  pickup: z
+    .object({
+      address: z.string(),
+      landmark: z.string().nullable(),
+      hours: z.string().nullable(),
+      phone: z.string().nullable(),
+      instructions: z.string().nullable(),
+    })
+    .nullable(),
+});
+
+export type CheckoutQuoteResponse = z.infer<typeof checkoutQuoteResponseSchema>;
+
+export const checkoutRequestSchema = z
+  .object({
+    email: z.string().email().max(255),
+    displayName: z.string().min(1).max(255).optional(),
+    items: z.array(checkoutItemSchema).min(1).max(50),
+    /** Pay on fulfillment (COD) or PayMongo online. */
+    paymentMethod: paymentMethodSchema.default("pickup"),
+    fulfillmentMode: fulfillmentModeSchema.default("delivery"),
+    deliveryAddress: deliveryAddressSchema.optional(),
+    turnstileToken: z.string().min(1).max(2048).optional(),
+    firebaseIdToken: z.string().min(1).max(8192).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.fulfillmentMode === "delivery" && !data.deliveryAddress) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Delivery address is required for delivery orders",
+        path: ["deliveryAddress"],
+      });
+    }
+  });
 
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 
@@ -68,11 +134,14 @@ export const checkoutResponseSchema = z.object({
   orderId: z.string().uuid(),
   externalId: z.string(),
   status: orderStatusSchema,
+  fulfillmentMode: fulfillmentModeSchema,
   grossAmount: z.string(),
+  deliveryFeeAmount: z.string(),
+  totalAmount: z.string(),
   patronageAmount: z.string(),
   currency: z.string(),
+  fulfillmentNote: z.string().optional(),
   pickupNote: z.string().optional(),
-  /** Present when paymentMethod is `online` and PayMongo session was created. */
   checkoutUrl: z.string().url().optional(),
 });
 
@@ -82,13 +151,17 @@ export const orderDetailSchema = z.object({
   orderId: z.string().uuid(),
   externalId: z.string(),
   status: orderStatusSchema,
+  fulfillmentMode: fulfillmentModeSchema,
   guestEmail: z.string().nullable(),
   participantId: z.string().uuid().nullable(),
   vendorCode: z.string(),
   grossAmount: z.string(),
+  deliveryFeeAmount: z.string(),
+  totalAmount: z.string(),
   patronageAmount: z.string(),
   currency: z.string(),
   memo: z.string().nullable(),
+  deliveryAddress: deliveryAddressSchema.nullable().optional(),
   accountingError: z.string().optional(),
   createdAt: z.string(),
   lines: z.array(
@@ -99,6 +172,7 @@ export const orderDetailSchema = z.object({
       unitPrice: z.string(),
       lineGross: z.string(),
       linePatronage: z.string(),
+      lineDeliveryFee: z.string(),
     }),
   ),
 });

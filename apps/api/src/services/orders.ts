@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import type { DeliveryAddress } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { orderLines, orders } from "../db/schema";
 import { postMarketplaceSale } from "../integrations/accounting-client";
@@ -32,20 +33,36 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
       ? String(metadata.accountingError)
       : undefined;
 
+  const deliveryFeeAmount = order.deliveryFeeAmount ?? "0.00";
+  const meta = metadata as Record<string, unknown>;
+  const totalAmount =
+    typeof meta.totalAmount === "string"
+      ? meta.totalAmount
+      : (Number(order.grossAmount) + Number(deliveryFeeAmount)).toFixed(2);
+
+  const deliveryAddress =
+    order.deliveryAddress && typeof order.deliveryAddress === "object"
+      ? (order.deliveryAddress as DeliveryAddress)
+      : null;
+
   return {
     orderId: order.id,
     externalId: order.externalId,
     status: order.status,
+    fulfillmentMode: order.fulfillmentMode,
     guestEmail: order.guestEmail,
     participantId: order.participantId,
     vendorCode: order.vendorCode,
     grossAmount: order.grossAmount,
+    deliveryFeeAmount,
+    totalAmount,
     salesAmount: order.salesAmount,
     vendorPayableAmount: order.vendorPayableAmount,
     cogsAmount: order.cogsAmount,
     patronageAmount: order.patronageAmount,
     currency: order.currency,
     memo: order.memo,
+    deliveryAddress,
     accountingError,
     createdAt: order.createdAt.toISOString(),
     lines: lines.map((line) => ({
@@ -55,6 +72,7 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
       unitPrice: line.unitPrice,
       lineGross: line.lineGross,
       linePatronage: line.linePatronage,
+      lineDeliveryFee: line.lineDeliveryFee ?? "0.00",
     })),
   };
 }
@@ -161,8 +179,8 @@ export async function confirmPickupAndPostLedger(
     throw new OrderError("Order is cancelled", 409);
   }
 
-  if (order.status !== "PENDING_PICKUP" && order.status !== "FAILED") {
-    throw new OrderError(`Cannot confirm pickup for status ${order.status}`, 409);
+  if (order.status !== "PENDING_PICKUP" && order.status !== "PENDING_DELIVERY" && order.status !== "FAILED") {
+    throw new OrderError(`Cannot confirm fulfillment for status ${order.status}`, 409);
   }
 
   await db
@@ -171,7 +189,9 @@ export async function confirmPickupAndPostLedger(
     .where(eq(orders.id, orderId));
 
   const paid = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-  return finalizePaidOrder(db, env, paid[0]!, "store_pickup_confirm");
+  const channel =
+    paid[0]?.fulfillmentMode === "merchant_pickup" ? "store_pickup_confirm" : "store_delivery_confirm";
+  return finalizePaidOrder(db, env, paid[0]!, channel);
 }
 
 /** PayMongo webhook — idempotent by externalId / order status. */
@@ -214,6 +234,7 @@ export async function fulfillOnlinePayment(
 }
 
 export async function listPendingPickupOrders(db: StoreDatabase, vendorCode?: string) {
+  const pendingStatuses = ["PENDING_PICKUP", "PENDING_DELIVERY"] as const;
   const rows = await db
     .select({
       orderId: orders.id,
@@ -221,14 +242,19 @@ export async function listPendingPickupOrders(db: StoreDatabase, vendorCode?: st
       guestEmail: orders.guestEmail,
       vendorCode: orders.vendorCode,
       status: orders.status,
+      fulfillmentMode: orders.fulfillmentMode,
       grossAmount: orders.grossAmount,
+      deliveryFeeAmount: orders.deliveryFeeAmount,
       createdAt: orders.createdAt,
     })
     .from(orders)
     .where(
       vendorCode
-        ? and(eq(orders.status, "PENDING_PICKUP"), eq(orders.vendorCode, vendorCode))
-        : eq(orders.status, "PENDING_PICKUP"),
+        ? and(
+            inArray(orders.status, [...pendingStatuses]),
+            eq(orders.vendorCode, vendorCode),
+          )
+        : inArray(orders.status, [...pendingStatuses]),
     );
 
   return rows

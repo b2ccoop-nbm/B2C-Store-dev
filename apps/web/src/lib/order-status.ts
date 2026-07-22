@@ -1,7 +1,8 @@
 import type { OrderStatus } from "@b2ccoop/store-shared";
 
 const LABELS: Record<OrderStatus, string> = {
-  PENDING_PICKUP: "Pay at pickup",
+  PENDING_DELIVERY: "Out for delivery",
+  PENDING_PICKUP: "Ready for pickup",
   PENDING_PAYMENT: "Awaiting payment",
   PAID: "Paid",
   POSTED_TO_LEDGER: "Complete",
