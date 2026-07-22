@@ -132,7 +132,7 @@ export async function createCheckoutOrder(
       referenceNumber: externalId,
       description: resolved.memo,
       successUrl: `${storeBase}/order/${orderId}?paid=1`,
-      cancelUrl: `${storeBase}/cart`,
+      cancelUrl: `${storeBase}/order/${orderId}`,
       lineItems: [
         {
           name: resolved.memo.slice(0, 120),
@@ -192,5 +192,71 @@ export async function createCheckoutOrder(
   return {
     ...baseResponse,
     fulfillmentNote: `Delivery to ${addressText}. Pay ${resolved.totalAmount} PHP when your order arrives (includes ${deliveryFeeAmount} delivery).`,
+  };
+}
+
+export async function createPaymongoCheckoutForOrder(
+  db: StoreDatabase,
+  env: WorkerEnv,
+  orderId: string,
+) {
+  const rows = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const order = rows[0];
+  if (!order) {
+    throw new CheckoutError("Order not found", 404);
+  }
+  if (order.status !== "PENDING_PAYMENT") {
+    throw new CheckoutError(`Order is ${order.status}, not awaiting payment`, 409);
+  }
+
+  const meta =
+    typeof order.metadata === "object" && order.metadata
+      ? (order.metadata as Record<string, unknown>)
+      : {};
+  if (meta.paymentMethod !== "online") {
+    throw new CheckoutError("This order is not configured for online payment", 409);
+  }
+  if (!paymongoConfigured(env)) {
+    throw new CheckoutError("Online payment is not configured (PAYMONGO_SECRET_KEY)", 503);
+  }
+
+  const totalAmount =
+    typeof meta.totalAmount === "string"
+      ? meta.totalAmount
+      : (Number(order.grossAmount) + Number(order.deliveryFeeAmount ?? 0)).toFixed(2);
+  const storeBase = (env.PUBLIC_STORE_URL ?? "http://localhost:5175").replace(/\/$/, "");
+  const totalCentavos = Math.round(Number(totalAmount) * 100);
+  const paymongo = await createPaymongoCheckoutSession(env, {
+    referenceNumber: order.externalId,
+    description: order.memo ?? `Order ${order.id.slice(0, 8)}`,
+    successUrl: `${storeBase}/order/${orderId}?paid=1`,
+    cancelUrl: `${storeBase}/order/${orderId}`,
+    lineItems: [
+      {
+        name: (order.memo ?? "B2CCoop order").slice(0, 120),
+        amountCentavos: totalCentavos,
+        quantity: 1,
+      },
+    ],
+  });
+
+  if (!paymongo.ok) {
+    throw new CheckoutError(paymongo.error, 502);
+  }
+
+  await db
+    .update(orders)
+    .set({
+      metadata: {
+        ...meta,
+        paymongoSessionId: paymongo.sessionId,
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, orderId));
+
+  return {
+    orderId: order.id,
+    checkoutUrl: paymongo.checkoutUrl,
   };
 }

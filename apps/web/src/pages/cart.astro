@@ -9,7 +9,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 <MarketplaceLayout title="Cart">
   <header class="mb-6">
     <h1 class="text-display m-0">Your cart</h1>
-    <p class="text-body-sm text-neutral-500 mt-1 m-0">Delivery is the default. Pay when your order arrives, or pick up from the seller if they offer it.</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">Choose delivery or pickup, then pay on delivery or online via PayMongo (GCash, QR Ph, cards).</p>
   </header>
 
   <div id="cart-root" aria-live="polite">
@@ -33,6 +33,18 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
       </fieldset>
 
       <div id="pickup-summary" class="hidden rounded-xl border border-merchant-200 bg-merchant-50 p-4 text-body-sm" />
+
+      <fieldset id="payment-options" class="hidden border border-neutral-200 rounded-xl p-4 m-0 space-y-3">
+        <legend class="text-body-sm font-semibold px-1">How would you like to pay?</legend>
+        <label class="flex items-start gap-3 text-body-sm cursor-pointer">
+          <input type="radio" name="paymentMethod" value="pickup" checked class="mt-1" />
+          <span><strong>Pay on delivery / pickup</strong> — cash or e-wallet when you receive the order</span>
+        </label>
+        <label class="flex items-start gap-3 text-body-sm cursor-pointer">
+          <input type="radio" name="paymentMethod" value="online" class="mt-1" />
+          <span><strong>Pay online now</strong> — GCash, Maya, QR Ph, or card via PayMongo</span>
+        </label>
+      </fieldset>
 
       <div id="delivery-address-fields" class="space-y-4">
         <p class="text-body-sm font-semibold m-0">Delivery address</p>

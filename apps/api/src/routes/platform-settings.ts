@@ -6,6 +6,7 @@ import {
   getPlatformSettings,
   updatePlatformSettings,
 } from "../services/platform-settings";
+import { paymongoConfigured } from "../integrations/paymongo-client";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
 type AdminContext = Context<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>;
@@ -58,7 +59,13 @@ export async function getPublicCommerceSettings(c: Context<{ Bindings: WorkerEnv
   const { db, close } = createDb(dbUrl);
   try {
     const settings = await getPlatformSettings(db);
-    return c.json({ ok: true, settings });
+    return c.json({
+      ok: true,
+      settings,
+      checkout: {
+        onlinePaymentEnabled: paymongoConfigured(c.env),
+      },
+    });
   } finally {
     await close();
   }

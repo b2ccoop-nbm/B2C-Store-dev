@@ -29,6 +29,16 @@ function orderTotalAmount(order: OrderRow, metadata: Record<string, unknown>): s
   return (Number(order.grossAmount) + Number(order.deliveryFeeAmount ?? 0)).toFixed(2);
 }
 
+function orderMetadata(order: OrderRow): Record<string, unknown> {
+  return typeof order.metadata === "object" && order.metadata
+    ? (order.metadata as Record<string, unknown>)
+    : {};
+}
+
+function isPaidOnlineOrder(order: OrderRow): boolean {
+  return orderMetadata(order).paidOnline === true;
+}
+
 function deliverySummary(order: OrderRow): { city: string | null; phone: string | null } {
   if (!order.deliveryAddress || typeof order.deliveryAddress !== "object") {
     return { city: null, phone: null };
@@ -82,6 +92,11 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
     memo: order.memo,
     deliveryAddress,
     accountingError,
+    paymentMethod:
+      meta.paymentMethod === "online" || meta.paymentMethod === "pickup"
+        ? meta.paymentMethod
+        : "pickup",
+    paidOnline: meta.paidOnline === true,
     createdAt: order.createdAt.toISOString(),
     lines: lines.map((line) => ({
       sku: line.sku,
@@ -181,9 +196,21 @@ async function finalizePaidOrder(
 }
 
 function assertCanConfirm(order: OrderRow) {
-  if (order.status === "POSTED_TO_LEDGER") return;
   if (order.status === "CANCELLED") {
     throw new OrderError("Order is cancelled", 409);
+  }
+
+  if (order.status === "POSTED_TO_LEDGER") {
+    if (!isPaidOnlineOrder(order)) {
+      return;
+    }
+    if (order.fulfillmentStatus === "delivered") {
+      throw new OrderError("Order fulfillment is already complete", 409);
+    }
+    if (order.fulfillmentMode === "delivery") {
+      throw new OrderError("Mark the order as delivered before completing fulfillment", 409);
+    }
+    return;
   }
 
   if (order.fulfillmentMode === "merchant_pickup") {
@@ -213,6 +240,13 @@ export async function confirmFulfillmentAndPostLedger(
   }
 
   if (order.status === "POSTED_TO_LEDGER") {
+    if (isPaidOnlineOrder(order)) {
+      assertCanConfirm(order);
+      await db
+        .update(orders)
+        .set({ fulfillmentStatus: "delivered", updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
+    }
     return {
       orderId: order.id,
       externalId: order.externalId,
@@ -254,7 +288,9 @@ export async function updateOrderFulfillmentStatus(
     throw new OrderError("Order does not belong to your store", 409);
   }
   if (order.status !== "PENDING_DELIVERY" && order.status !== "PENDING_PICKUP") {
-    throw new OrderError(`Cannot update fulfillment for status ${order.status}`, 409);
+    if (!(order.status === "POSTED_TO_LEDGER" && isPaidOnlineOrder(order))) {
+      throw new OrderError(`Cannot update fulfillment for status ${order.status}`, 409);
+    }
   }
 
   const currentIndex = FULFILLMENT_FLOW.indexOf(order.fulfillmentStatus as FulfillmentStatus);
@@ -316,7 +352,7 @@ function serializePendingOrder(order: OrderRow) {
 }
 
 export async function listPendingFulfillmentOrders(db: StoreDatabase, vendorCode?: string) {
-  const pendingStatuses = ["PENDING_PICKUP", "PENDING_DELIVERY"] as const;
+  const pendingStatuses = ["PENDING_PICKUP", "PENDING_DELIVERY", "POSTED_TO_LEDGER"] as const;
   const rows = await db
     .select()
     .from(orders)
@@ -327,6 +363,11 @@ export async function listPendingFulfillmentOrders(db: StoreDatabase, vendorCode
     );
 
   return rows
+    .filter((row) => {
+      if (row.fulfillmentStatus === "delivered") return false;
+      if (row.status === "POSTED_TO_LEDGER") return isPaidOnlineOrder(row);
+      return row.status === "PENDING_PICKUP" || row.status === "PENDING_DELIVERY";
+    })
     .map((row) => serializePendingOrder(row))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
@@ -359,12 +400,12 @@ export async function fulfillOnlinePayment(
     .update(orders)
     .set({
       status: "PAID",
-      fulfillmentStatus: "delivered",
       updatedAt: new Date(),
       metadata: {
-        ...(typeof order.metadata === "object" && order.metadata ? order.metadata : {}),
+        ...orderMetadata(order),
         paymongoEventId,
         paidAt: new Date().toISOString(),
+        paidOnline: true,
       },
     })
     .where(eq(orders.id, order.id));

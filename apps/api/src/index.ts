@@ -55,6 +55,7 @@ import { postCheckoutQuote } from "./routes/checkout-quote";
 import { getDevFixtures } from "./routes/dev-fixtures";
 import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activity";
 import { getOrder } from "./routes/orders";
+import { postOrderPay } from "./routes/order-pay";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { getProductMedia } from "./routes/product-media";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
@@ -79,6 +80,7 @@ app.get("/", (c) =>
       "POST /checkout",
       "POST /checkout/quote",
       "GET /orders/:id",
+      "POST /orders/:id/pay",
       "GET /orders?email=",
       "GET /members/store-patronage?email=",
       "POST /seller/applications",
@@ -151,6 +153,7 @@ app.post("/checkout", (c) => postCheckout(c));
 app.post("/checkout/quote", (c) => postCheckoutQuote(c));
 app.get("/orders", (c) => getOrdersByEmail(c));
 app.get("/orders/:id", (c) => getOrder(c));
+app.post("/orders/:id/pay", (c) => postOrderPay(c));
 app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));
 app.get("/members/merchant-context", (c) => getMemberMerchantContext(c));
 

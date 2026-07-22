@@ -6,9 +6,10 @@ import Card from "@/components/atoms/Card.astro";
 import type { OrderDetail } from "@b2ccoop/store-shared";
 import { API_BASE } from "@/lib/api";
 import { formatPhp } from "@/lib/format";
-import { orderStatusLabel } from "@/lib/order-status";
+import { paymentMethodLabel, orderReceiptMessage, orderStatusBadgeLabel } from "@/lib/order-status";
 
 const { id } = Astro.params;
+const paidReturn = Astro.url.searchParams.get("paid") === "1";
 let order: OrderDetail | null = null;
 let error = "";
 
@@ -32,32 +33,25 @@ const statusVariant =
     ? "success"
     : order?.status === "FAILED"
       ? "danger"
-      : order?.status === "PENDING_PICKUP" || order?.status === "PENDING_DELIVERY"
+      : order?.status === "PENDING_PAYMENT"
         ? "warning"
-        : "neutral";
+        : order?.status === "PENDING_PICKUP" || order?.status === "PENDING_DELIVERY"
+          ? "warning"
+          : "neutral";
 
 const showStaffConfirm =
   order?.status === "PENDING_PICKUP" ||
   order?.status === "PENDING_DELIVERY" ||
   order?.status === "FAILED";
 
+const showPendingPayment = order?.status === "PENDING_PAYMENT";
+const statusMessage = order ? orderReceiptMessage(order) : "";
+
 function formatAddress(order: OrderDetail): string {
   const a = order.deliveryAddress;
   if (!a) return "";
   return [a.line1, a.line2, a.barangay, a.city, a.province, a.postalCode].filter(Boolean).join(", ");
 }
-
-const statusMessage = order
-  ? order.status === "PENDING_DELIVERY"
-    ? "Your order will be delivered to the address below. Pay when it arrives."
-    : order.status === "PENDING_PICKUP"
-      ? "Pick up from the seller and pay when you collect your order."
-      : order.status === "POSTED_TO_LEDGER"
-        ? "Payment recorded. Thank you for shopping with your coop."
-        : order.status === "FAILED"
-          ? "Payment was received but confirmation could not be completed — staff can retry below."
-          : "Order status updates will appear here."
-  : "";
 ---
 
 <MarketplaceLayout title={order ? `Order ${order.orderId.slice(0, 8)}…` : "Order"} hideBottomNav>
@@ -72,9 +66,31 @@ const statusMessage = order
         <header class="mb-6">
           <p class="text-caption text-neutral-500 uppercase tracking-wide m-0">Order receipt</p>
           <h1 class="text-display text-brand-600 m-0 mt-1">{formatPhp(order.totalAmount)}</h1>
-          <Badge variant={statusVariant} class="mt-2">{orderStatusLabel(order.status)}</Badge>
+          <Badge variant={statusVariant} class="mt-2">{orderStatusBadgeLabel(order)}</Badge>
           <p class="text-body text-neutral-500 mt-3 m-0">{statusMessage}</p>
         </header>
+
+        {
+          showPendingPayment && (
+            <Card class="mb-6 border-brand-200 bg-brand-50" id="order-pending-payment">
+              <h2 class="text-title-sm m-0 mb-2">Complete your payment</h2>
+              <p class="text-body-sm text-neutral-600 m-0 mb-4">
+                Pay with GCash, Maya, QR Ph, or card on PayMongo’s secure checkout page.
+              </p>
+              {
+                paidReturn && (
+                  <p class="text-body-sm text-brand-700 m-0 mb-4" role="status">
+                    Thanks — confirming your payment…
+                  </p>
+                )
+              }
+              <Button type="button" variant="primary" id="order-pay-btn">
+                Pay {formatPhp(order.totalAmount)} now
+              </Button>
+              <p id="order-pay-msg" class="hidden text-body-sm mt-3 m-0" role="status" />
+            </Card>
+          )
+        }
 
         <Card class="mb-6">
           <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 m-0 text-body-sm">
@@ -86,6 +102,8 @@ const statusMessage = order
             <dd class="m-0">{order.vendorCode}</dd>
             <dt class="text-neutral-500">Fulfillment</dt>
             <dd class="m-0 capitalize">{order.fulfillmentMode.replace("_", " ")}</dd>
+            <dt class="text-neutral-500">Payment</dt>
+            <dd class="m-0">{paymentMethodLabel(order.paymentMethod)}</dd>
           </dl>
         </Card>
 
@@ -174,6 +192,32 @@ const statusMessage = order
     ) : null
   }
 </MarketplaceLayout>
+
+{
+  showPendingPayment && order && (
+    <div
+      id="order-pay-panel"
+      class="hidden"
+      data-api-base={API_BASE}
+      data-order-id={order.orderId}
+      data-await-return={paidReturn ? "1" : "0"}
+    />
+  )
+}
+
+{
+  showPendingPayment && order && (
+    <script>
+      import { setupOrderPay } from "@/scripts/order-pay";
+      const panel = document.getElementById("order-pay-panel");
+      if (panel?.dataset.apiBase && panel.dataset.orderId) {
+        setupOrderPay(panel.dataset.apiBase, panel.dataset.orderId, {
+          awaitingReturn: panel.dataset.awaitReturn === "1",
+        });
+      }
+    </script>
+  )
+}
 
 {
   showStaffConfirm && (

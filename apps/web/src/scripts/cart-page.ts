@@ -1,4 +1,4 @@
-import type { CheckoutQuoteResponse, FulfillmentMode } from "@b2ccoop/store-shared";
+import type { CheckoutQuoteResponse, FulfillmentMode, PaymentMethod } from "@b2ccoop/store-shared";
 import { readCart, updateQty, clearCart } from "@/lib/cart";
 import { formatPhp } from "@/lib/format";
 
@@ -13,11 +13,14 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
   const stickyCheckout = document.getElementById("sticky-checkout");
   const stickyCheckoutBtn = document.getElementById("sticky-checkout-btn");
   const fulfillmentEl = document.getElementById("fulfillment-options");
+  const paymentEl = document.getElementById("payment-options");
   const deliveryFields = document.getElementById("delivery-address-fields");
   const pickupSummary = document.getElementById("pickup-summary");
 
   let quote: QuoteState = null;
   let fulfillmentMode: FulfillmentMode = "delivery";
+  let paymentMethod: PaymentMethod = "pickup";
+  let onlinePaymentEnabled = false;
   let quoteLoading = false;
 
   function patronageTotal(cart: ReturnType<typeof readCart>): number {
@@ -32,14 +35,30 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
     return Number(quote.totalAmount);
   }
 
-  function updateFulfillmentVisibility(): void {
+  function submitLabel(): string {
+    if (paymentMethod === "online") {
+      return "Continue to PayMongo — GCash / QR Ph / card";
+    }
+    return fulfillmentMode === "delivery"
+      ? "Place order — pay on delivery"
+      : "Place order — pay at pickup";
+  }
+
+  function paymentHint(): string {
+    if (paymentMethod === "online") {
+      return "You’ll pay now on PayMongo’s secure page (GCash, Maya, QR Ph, cards).";
+    }
+    return fulfillmentMode === "delivery"
+      ? "Pay when your order is delivered."
+      : "Pay when you pick up from the seller.";
+  }
+
+  function updateCheckoutControls(): void {
     const isDelivery = fulfillmentMode === "delivery";
     deliveryFields?.classList.toggle("hidden", !isDelivery);
     pickupSummary?.classList.toggle("hidden", isDelivery || !quote?.pickupAvailable);
     if (checkoutSubmit instanceof HTMLButtonElement) {
-      checkoutSubmit.textContent = isDelivery
-        ? "Place order — pay on delivery"
-        : "Place order — pay at pickup";
+      checkoutSubmit.textContent = submitLabel();
     }
     renderTotals();
   }
@@ -61,7 +80,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
           : ""
       }
       <p class="text-title-sm m-0 flex justify-between pt-2 border-t border-neutral-200"><span>Total</span><span>${formatPhp(selectedTotal())}</span></p>
-      <p class="text-caption text-neutral-500 m-0">${fulfillmentMode === "delivery" ? "Pay when your order is delivered." : "Pay when you pick up from the seller."}</p>`;
+      <p class="text-caption text-neutral-500 m-0">${paymentHint()}</p>`;
   }
 
   function renderPickupSummary(): void {
@@ -76,12 +95,28 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       ${p.instructions ? `<p class="text-caption text-neutral-500 m-0 mt-2">${p.instructions}</p>` : ""}`;
   }
 
+  function bindPaymentOptions(): void {
+    if (!paymentEl) return;
+    paymentEl.classList.toggle("hidden", !onlinePaymentEnabled);
+    paymentEl.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((input) => {
+      input.checked = input.value === paymentMethod;
+    });
+  }
+
   fulfillmentEl?.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.name !== "fulfillmentMode" || !target.checked) return;
     fulfillmentMode = target.value as FulfillmentMode;
-    updateFulfillmentVisibility();
+    updateCheckoutControls();
+  });
+
+  paymentEl?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    if (target.name !== "paymentMethod" || !target.checked) return;
+    paymentMethod = target.value as PaymentMethod;
+    updateCheckoutControls();
   });
 
   function bindFulfillmentOptions(): void {
@@ -91,7 +126,23 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       input.disabled = input.value === "merchant_pickup" && !quote?.pickupAvailable;
     });
     renderPickupSummary();
-    updateFulfillmentVisibility();
+    bindPaymentOptions();
+    updateCheckoutControls();
+  }
+
+  async function loadCheckoutSettings(): Promise<void> {
+    try {
+      const res = await fetch(`${apiBase}/settings/commerce`);
+      const data = await res.json();
+      onlinePaymentEnabled = Boolean(data.checkout?.onlinePaymentEnabled);
+      if (!onlinePaymentEnabled && paymentMethod === "online") {
+        paymentMethod = "pickup";
+      }
+    } catch {
+      onlinePaymentEnabled = false;
+      paymentMethod = "pickup";
+    }
+    bindPaymentOptions();
   }
 
   async function loadQuote(): Promise<void> {
@@ -229,7 +280,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
     const body: Record<string, unknown> = {
       email: String(fd.get("email") ?? ""),
       displayName: String(fd.get("displayName") ?? "") || undefined,
-      paymentMethod: "pickup",
+      paymentMethod,
       fulfillmentMode,
       items: cart.map((l) => ({ sku: l.sku, quantity: l.quantity })),
       ...(turnstileToken ? { turnstileToken } : {}),
@@ -262,7 +313,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
     if (checkoutSubmit instanceof HTMLButtonElement) {
       checkoutSubmit.disabled = true;
-      checkoutSubmit.textContent = "Placing order…";
+      checkoutSubmit.textContent = paymentMethod === "online" ? "Opening PayMongo…" : "Placing order…";
     }
     try {
       const res = await fetch(`${apiBase}/checkout`, {
@@ -272,6 +323,13 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");
+
+      if (paymentMethod === "online" && typeof data.checkoutUrl === "string") {
+        clearCart();
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
       clearCart();
       window.location.href = `/order/${data.orderId}`;
     } catch (err) {
@@ -281,13 +339,12 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       }
       if (checkoutSubmit instanceof HTMLButtonElement) {
         checkoutSubmit.disabled = false;
-        checkoutSubmit.textContent =
-          fulfillmentMode === "delivery" ? "Place order — pay on delivery" : "Place order — pay at pickup";
+        checkoutSubmit.textContent = submitLabel();
       }
     }
   });
 
-  void renderWithQuote();
+  void loadCheckoutSettings().then(() => renderWithQuote());
   if (window.location.hash === "#checkout") {
     checkoutPanel?.scrollIntoView({ behavior: "smooth" });
   }

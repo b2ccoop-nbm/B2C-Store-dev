@@ -191,6 +191,8 @@ export const orderDetailSchema = z.object({
   memo: z.string().nullable(),
   deliveryAddress: deliveryAddressSchema.nullable().optional(),
   accountingError: z.string().optional(),
+  paymentMethod: paymentMethodSchema.optional(),
+  paidOnline: z.boolean().optional(),
   createdAt: z.string(),
   lines: z.array(
     z.object({
