@@ -90,12 +90,12 @@ function editFormRow(listing: MerchantListingRow): string {
         </label>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="block text-body-sm">
-            <span class="font-medium">Price (PHP)</span>
+            <span class="font-medium">SRP (PHP)</span>
             <input name="unitPrice" type="text" inputmode="decimal" required value="${escapeAttr(listing.unitPrice)}" class="mt-1 w-full min-h-touch rounded-lg border border-neutral-200 px-3" />
           </label>
           <label class="block text-body-sm">
             <span class="font-medium">Patronage / unit</span>
-            <input name="patronagePerUnit" type="text" inputmode="decimal" value="${escapeAttr(listing.patronagePerUnit)}" class="mt-1 w-full min-h-touch rounded-lg border border-neutral-200 px-3" />
+            <input type="text" readonly value="${escapeAttr(listing.patronagePerUnit)}" class="mt-1 w-full min-h-touch rounded-lg border border-neutral-100 bg-neutral-50 px-3" title="Computed from coop revenue — edit SRP to recalculate" />
           </label>
         </div>
         <p class="text-caption text-neutral-500 m-0">Current SKU: <code>${sku}</code></p>
@@ -319,12 +319,11 @@ export function setupMerchantListings(apiBase = API_BASE): void {
     const name = String(formData.get("name") ?? "").trim();
     const category = String(formData.get("category") ?? "").trim();
     const unitPrice = String(formData.get("unitPrice") ?? "").trim();
-    const patronagePerUnit = String(formData.get("patronagePerUnit") ?? "0").trim();
     const skuBase = String(formData.get("skuBase") ?? "").trim();
 
     void (async () => {
       try {
-        const body: Record<string, string> = { name, category, unitPrice, patronagePerUnit };
+        const body: Record<string, string> = { name, category, unitPrice };
         if (skuBase && skuBase !== stripListingSkuTimestamp(sku)) {
           body.skuBase = skuBase;
         }

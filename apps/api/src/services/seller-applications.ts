@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { inferSellerKindFromVendorCode } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { sellerApplications, vendors } from "../db/schema";
 import { slugify, vendorCodeFromName } from "../lib/slug";
@@ -227,6 +228,7 @@ export async function approveSellerApplication(
       description: application.description,
       contactPhone: application.contactPhone,
       businessType: application.businessType,
+      sellerKind: inferSellerKindFromVendorCode(code),
       apiTokenHash,
       firebaseUid,
     })

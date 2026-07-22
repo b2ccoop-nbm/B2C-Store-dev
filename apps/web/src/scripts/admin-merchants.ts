@@ -54,6 +54,8 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   const vendorsList = document.getElementById("vendors-list");
   const loadProfileChangesBtn = document.getElementById("load-profile-changes");
   const profileChangesPanel = document.getElementById("profile-changes-panel");
+  const loadPlatformSettingsBtn = document.getElementById("load-platform-settings");
+  const platformSettingsPanel = document.getElementById("platform-settings-panel");
   const credentialsAlert = document.getElementById("credentials-alert");
   const errorEl = document.getElementById("admin-merchants-error");
 
@@ -85,6 +87,11 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
 
   function escapeAttr(value: string): string {
     return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+  }
+
+  function formatPhp(value: string): string {
+    const n = Number(value);
+    return Number.isFinite(n) ? `₱${n.toFixed(2)}` : value;
   }
 
   function accessTokenField(value: string): string {
@@ -563,14 +570,40 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
             sku: string;
             name: string;
             unitPrice: string;
+            salesPerUnit?: string;
+            patronagePerUnit?: string;
+            listingFeePercent?: string | null;
+            deliveryTier?: string;
+            effectiveDeliveryPerItem?: string;
           }) => `
-        <article class="elevation-1 p-4 mb-3 flex flex-wrap items-center justify-between gap-3" data-listing="${l.vendorCode}:${l.sku}">
-          <div>
-            <p class="text-body font-semibold m-0">${escapeHtml(l.name)}</p>
-            <p class="text-caption text-neutral-500 m-0 mt-1">${escapeHtml(l.vendorCode)} · ${escapeHtml(l.sku)} · ₱${Number(l.unitPrice).toFixed(2)}</p>
+        <article class="elevation-1 p-4 mb-3" data-listing="${escapeAttr(l.vendorCode)}:${escapeAttr(l.sku)}">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div>
+              <p class="text-body font-semibold m-0">${escapeHtml(l.name)}</p>
+              <p class="text-caption text-neutral-500 m-0 mt-1">${escapeHtml(l.vendorCode)} · ${escapeHtml(l.sku)}</p>
+              <p class="text-body-sm m-0 mt-2">SRP ${formatPhp(l.unitPrice)} · Coop ${formatPhp(l.salesPerUnit ?? "0")} · Patronage ${formatPhp(l.patronagePerUnit ?? "0")} · Delivery ${formatPhp(l.effectiveDeliveryPerItem ?? "50")}</p>
+            </div>
           </div>
-          <button type="button" class="b2c-approve-listing touch-target min-h-10 px-4 rounded-lg bg-success-600 text-white text-body-sm font-semibold border-0 cursor-pointer"
-            data-vendor="${escapeHtml(l.vendorCode)}" data-sku="${escapeHtml(l.sku)}">Publish listing</button>
+          <div class="grid gap-3 sm:grid-cols-3 max-w-xl">
+            <label class="block text-caption">
+              <span class="font-semibold">Listing fee %</span>
+              <input type="text" data-approve-fee data-vendor="${escapeAttr(l.vendorCode)}" data-sku="${escapeAttr(l.sku)}" value="${escapeAttr(l.listingFeePercent ?? "")}" placeholder="10" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" />
+            </label>
+            <label class="block text-caption">
+              <span class="font-semibold">Delivery / item</span>
+              <input type="text" data-approve-delivery data-vendor="${escapeAttr(l.vendorCode)}" data-sku="${escapeAttr(l.sku)}" value="${escapeAttr(l.effectiveDeliveryPerItem ?? "")}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" />
+            </label>
+            <label class="block text-caption">
+              <span class="font-semibold">Delivery tier</span>
+              <select data-approve-tier data-vendor="${escapeAttr(l.vendorCode)}" data-sku="${escapeAttr(l.sku)}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2">
+                <option value="standard"${l.deliveryTier === "standard" ? " selected" : ""}>Standard</option>
+                <option value="bulky"${l.deliveryTier === "bulky" ? " selected" : ""}>Bulky</option>
+                <option value="remote"${l.deliveryTier === "remote" ? " selected" : ""}>Remote</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" class="b2c-approve-listing touch-target min-h-10 px-4 rounded-lg bg-success-600 text-white text-body-sm font-semibold border-0 cursor-pointer mt-4"
+            data-vendor="${escapeAttr(l.vendorCode)}" data-sku="${escapeAttr(l.sku)}">Publish listing</button>
         </article>`,
         )
         .join("");
@@ -579,13 +612,22 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
         btn.addEventListener("click", async () => {
           const vendor = btn.getAttribute("data-vendor");
           const sku = btn.getAttribute("data-sku");
-          const h = requireAuth();
+          const h = authJsonHeaders();
           if (!vendor || !sku || !h) return;
+          const article = btn.closest("article");
+          const feeInput = article?.querySelector<HTMLInputElement>(`[data-approve-fee][data-sku="${CSS.escape(sku)}"]`);
+          const deliveryInput = article?.querySelector<HTMLInputElement>(`[data-approve-delivery][data-sku="${CSS.escape(sku)}"]`);
+          const tierSelect = article?.querySelector<HTMLSelectElement>(`[data-approve-tier][data-sku="${CSS.escape(sku)}"]`);
+          const body: Record<string, string | null> = {};
+          if (feeInput?.value.trim()) body.listingFeePercent = feeInput.value.trim();
+          if (deliveryInput?.value.trim()) body.deliveryPerItem = deliveryInput.value.trim();
+          if (tierSelect?.value) body.deliveryTier = tierSelect.value;
+
           if (btn instanceof HTMLButtonElement) btn.disabled = true;
           try {
             const res = await fetch(
               `${apiBase}/admin/listings/${encodeURIComponent(vendor)}/${encodeURIComponent(sku)}/approve`,
-              { method: "PATCH", headers: h },
+              { method: "PATCH", headers: h, body: JSON.stringify(body) },
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.error ?? "Approve failed");
@@ -609,6 +651,70 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
   loadListingsBtn?.addEventListener("click", () => void loadListings());
   loadVendorsBtn?.addEventListener("click", () => void loadVendors());
   loadProfileChangesBtn?.addEventListener("click", () => void loadProfileChanges());
+  loadPlatformSettingsBtn?.addEventListener("click", () => void loadPlatformSettings());
+
+  async function loadPlatformSettings() {
+    const headers = authJsonHeaders();
+    if (!headers || !platformSettingsPanel) return;
+    platformSettingsPanel.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
+
+    try {
+      const res = await fetch(`${apiBase}/admin/settings/commerce`, { headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Load failed");
+      const s = data.settings as Record<string, string>;
+
+      platformSettingsPanel.innerHTML = `
+        <form id="platform-settings-form" class="grid gap-3 max-w-md">
+          <label class="block text-body-sm"><span class="font-medium">Delivery per item (PHP)</span>
+            <input name="defaultDeliveryPerItem" type="text" value="${escapeAttr(s.defaultDeliveryPerItem ?? "50.00")}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" /></label>
+          <label class="block text-body-sm"><span class="font-medium">Max delivery per order (PHP)</span>
+            <input name="maxDeliveryPerOrder" type="text" value="${escapeAttr(s.maxDeliveryPerOrder ?? "500.00")}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" /></label>
+          <label class="block text-body-sm"><span class="font-medium">Partner listing fee (%)</span>
+            <input name="defaultPartnerListingFeePercent" type="text" value="${escapeAttr(s.defaultPartnerListingFeePercent ?? "10.00")}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" /></label>
+          <label class="block text-body-sm"><span class="font-medium">Patronage rate (% of coop revenue)</span>
+            <input name="patronageRatePercent" type="text" value="${escapeAttr(s.patronageRatePercent ?? "8.00")}" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2" /></label>
+          <p id="platform-settings-msg" class="hidden text-body-sm m-0" role="status"></p>
+          <button type="submit" class="touch-target min-h-10 px-4 rounded-lg bg-brand-600 text-white text-body-sm font-semibold border-0 cursor-pointer w-fit">Save platform settings</button>
+        </form>`;
+
+      platformSettingsPanel.querySelector("#platform-settings-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const h = authJsonHeaders();
+        if (!h) return;
+        const form = event.target as HTMLFormElement;
+        const fd = new FormData(form);
+        const body = Object.fromEntries(fd.entries()) as Record<string, string>;
+        const msg = platformSettingsPanel.querySelector("#platform-settings-msg");
+        try {
+          const saveRes = await fetch(`${apiBase}/admin/settings/commerce`, {
+            method: "PATCH",
+            headers: h,
+            body: JSON.stringify(body),
+          });
+          const saveData = await saveRes.json();
+          if (!saveRes.ok) throw new Error(saveData.error ?? "Save failed");
+          if (msg instanceof HTMLElement) {
+            msg.textContent = "Platform settings saved.";
+            msg.className = "text-body-sm m-0 text-success-600";
+            msg.classList.remove("hidden");
+          }
+        } catch (err) {
+          if (msg instanceof HTMLElement) {
+            msg.textContent = err instanceof Error ? err.message : "Save failed";
+            msg.className = "text-body-sm m-0 text-danger-600";
+            msg.classList.remove("hidden");
+          }
+        }
+      });
+    } catch (err) {
+      platformSettingsPanel.innerHTML = "";
+      if (errorEl) {
+        errorEl.textContent = err instanceof Error ? err.message : "Load failed";
+        errorEl.classList.remove("hidden");
+      }
+    }
+  }
 
   setupStoreAdminSignIn(apiBase, (state) => {
     authHeaders = state.headers;
@@ -617,6 +723,7 @@ export function setupAdminMerchants(apiBase = API_BASE): void {
       void loadVendors();
       void loadProfileChanges();
       void loadListings();
+      void loadPlatformSettings();
     }
   });
 }

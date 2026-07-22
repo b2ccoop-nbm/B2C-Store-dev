@@ -7,12 +7,18 @@ import {
   getAdminPendingListings,
   getAdminPendingProfileChanges,
   getAdminVendors,
+  patchAdminVendorCommerce,
   patchApproveApplication,
   patchApproveListing,
   patchApproveVendorProfile,
   patchRejectApplication,
   patchRotateVendorToken,
 } from "./routes/admin-merchants";
+import {
+  getAdminPlatformSettings,
+  getPublicCommerceSettings,
+  patchAdminPlatformSettings,
+} from "./routes/platform-settings";
 import {
   adminAuth,
   getAdminPendingOrders,
@@ -76,6 +82,7 @@ app.get("/", (c) =>
       "GET /seller/applications",
       "POST /merchant/bind-firebase",
       "GET /members/merchant-context",
+      "GET /settings/commerce",
       "GET /merchant/session",
       "GET /merchant/profile",
       "PATCH /merchant/profile",
@@ -98,6 +105,9 @@ app.get("/", (c) =>
       "PATCH /admin/seller-applications/:id/approve",
       "PATCH /admin/seller-applications/:id/reject",
       "PATCH /admin/listings/:vendorCode/:sku/approve",
+      "GET /admin/settings/commerce",
+      "PATCH /admin/settings/commerce",
+      "PATCH /admin/vendors/:code/commerce",
       "PATCH /admin/vendors/:code/rotate-token",
       "GET /dev/fixtures",
       "POST /webhooks/paymongo",
@@ -128,6 +138,7 @@ app.get("/health", async (c) => {
 });
 
 app.get("/catalog", (c) => getCatalog(c));
+app.get("/settings/commerce", (c) => getPublicCommerceSettings(c));
 app.get("/media/*", (c) => getProductMedia(c));
 app.get("/storefront/:slug", (c) => getStorefront(c));
 app.post("/checkout", (c) => postCheckout(c));
@@ -169,6 +180,9 @@ admin.get("/listings/pending", (c) => getAdminPendingListings(c));
 admin.patch("/seller-applications/:id/approve", (c) => patchApproveApplication(c));
 admin.patch("/seller-applications/:id/reject", (c) => patchRejectApplication(c));
 admin.patch("/listings/:vendorCode/:sku/approve", (c) => patchApproveListing(c));
+admin.get("/settings/commerce", (c) => getAdminPlatformSettings(c));
+admin.patch("/settings/commerce", (c) => patchAdminPlatformSettings(c));
+admin.patch("/vendors/:code/commerce", (c) => patchAdminVendorCommerce(c));
 admin.patch("/vendors/:code/rotate-token", (c) => patchRotateVendorToken(c));
 app.route("/admin", admin);
 

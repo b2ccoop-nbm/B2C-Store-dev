@@ -8,7 +8,9 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
   const form = document.getElementById("merchant-settings-form");
   const pendingEl = document.getElementById("settings-pending-name");
   const vendorCodeEl = document.getElementById("settings-vendor-code");
+  const sellerKindEl = document.getElementById("settings-seller-kind");
   const storefrontLink = document.getElementById("settings-storefront-link");
+  const pickupFields = document.getElementById("pickup-fields");
   const errorEl = document.getElementById("settings-error");
   const successEl = document.getElementById("settings-success");
   const saveBtn = document.getElementById("settings-save");
@@ -19,6 +21,14 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     email: document.getElementById("settings-email") as HTMLInputElement | null,
     phone: document.getElementById("settings-phone") as HTMLInputElement | null,
     description: document.getElementById("settings-description") as HTMLTextAreaElement | null,
+    pickupEnabled: document.getElementById("settings-pickup-enabled") as HTMLInputElement | null,
+    pickupAddress: document.getElementById("settings-pickup-address") as HTMLInputElement | null,
+    pickupLandmark: document.getElementById("settings-pickup-landmark") as HTMLInputElement | null,
+    pickupHours: document.getElementById("settings-pickup-hours") as HTMLInputElement | null,
+    pickupPhone: document.getElementById("settings-pickup-phone") as HTMLInputElement | null,
+    pickupInstructions: document.getElementById("settings-pickup-instructions") as HTMLTextAreaElement | null,
+    deliveryPerItem: document.getElementById("settings-delivery-rate") as HTMLInputElement | null,
+    partnerListingFeePercent: document.getElementById("settings-partner-fee") as HTMLInputElement | null,
   };
 
   let currentProfile: MerchantProfile | null = null;
@@ -37,6 +47,16 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     errorEl?.classList.add("hidden");
   }
 
+  function updatePickupVisibility() {
+    const enabled = fields.pickupEnabled?.checked ?? false;
+    pickupFields?.classList.toggle("hidden", !enabled);
+  }
+
+  function updatePartnerFeeVisibility() {
+    const isPartner = currentProfile?.sellerKind === "PARTNER";
+    document.getElementById("partner-fee-field")?.classList.toggle("hidden", !isPartner);
+  }
+
   function fillForm(profile: MerchantProfile) {
     currentProfile = profile;
     if (fields.name) fields.name.value = profile.pendingName ?? profile.name;
@@ -44,12 +64,26 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     if (fields.email) fields.email.value = profile.email ?? profile.ownerEmail ?? "";
     if (fields.phone) fields.phone.value = profile.contactPhone ?? "";
     if (fields.description) fields.description.value = profile.description ?? "";
+    if (fields.pickupEnabled) fields.pickupEnabled.checked = profile.pickupEnabled;
+    if (fields.pickupAddress) fields.pickupAddress.value = profile.pickupAddress ?? "";
+    if (fields.pickupLandmark) fields.pickupLandmark.value = profile.pickupLandmark ?? "";
+    if (fields.pickupHours) fields.pickupHours.value = profile.pickupHours ?? "";
+    if (fields.pickupPhone) fields.pickupPhone.value = profile.pickupPhone ?? "";
+    if (fields.pickupInstructions) fields.pickupInstructions.value = profile.pickupInstructions ?? "";
+    if (fields.deliveryPerItem) fields.deliveryPerItem.value = profile.deliveryPerItem ?? "";
+    if (fields.partnerListingFeePercent) {
+      fields.partnerListingFeePercent.value = profile.partnerListingFeePercent ?? "";
+    }
 
     if (vendorCodeEl) vendorCodeEl.textContent = profile.code;
+    if (sellerKindEl) sellerKindEl.textContent = profile.sellerKind;
     if (storefrontLink instanceof HTMLAnchorElement) {
       storefrontLink.href = `/store/${profile.slug}`;
       storefrontLink.textContent = `/store/${profile.slug}`;
     }
+
+    updatePickupVisibility();
+    updatePartnerFeeVisibility();
 
     if (pendingEl) {
       if (profile.pendingName && profile.pendingSlug) {
@@ -61,6 +95,8 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
       }
     }
   }
+
+  fields.pickupEnabled?.addEventListener("change", updatePickupVisibility);
 
   async function loadProfile() {
     try {
@@ -84,13 +120,25 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     errorEl?.classList.add("hidden");
     successEl?.classList.add("hidden");
 
-    const payload = {
+    const pickupEnabled = fields.pickupEnabled?.checked ?? false;
+    const payload: Record<string, unknown> = {
       name: fields.name?.value.trim(),
       businessType: fields.businessType?.value,
       email: fields.email?.value.trim(),
       contactPhone: fields.phone?.value.trim() || null,
       description: fields.description?.value.trim() || null,
+      pickupEnabled,
+      pickupAddress: pickupEnabled ? fields.pickupAddress?.value.trim() || null : null,
+      pickupLandmark: pickupEnabled ? fields.pickupLandmark?.value.trim() || null : null,
+      pickupHours: pickupEnabled ? fields.pickupHours?.value.trim() || null : null,
+      pickupPhone: pickupEnabled ? fields.pickupPhone?.value.trim() || null : null,
+      pickupInstructions: pickupEnabled ? fields.pickupInstructions?.value.trim() || null : null,
+      deliveryPerItem: fields.deliveryPerItem?.value.trim() || null,
     };
+
+    if (currentProfile?.sellerKind === "PARTNER") {
+      payload.partnerListingFeePercent = fields.partnerListingFeePercent?.value.trim() || null;
+    }
 
     if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
 
@@ -106,8 +154,8 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
       fillForm(data.profile as MerchantProfile);
       showSuccess(
         data.nameChangePending
-          ? "Contact details saved. Business name change sent for coop officer review."
-          : (data.message as string) ?? "Store profile updated.",
+          ? "Settings saved. Business name change sent for coop officer review."
+          : (data.message as string) ?? "Store settings updated.",
       );
     } catch (err) {
       showError(err instanceof Error ? err.message : "Save failed");

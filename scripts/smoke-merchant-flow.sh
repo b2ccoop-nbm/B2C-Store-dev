@@ -50,7 +50,7 @@ echo "== 3. Create listing =="
 LIST_RES=$(curl -sS -X POST "$API_BASE/merchant/listings" \
   -H "Authorization: Bearer $VENDOR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"sku\":\"$SKU\",\"name\":\"Smoke Test Honey\",\"category\":\"Produce\",\"unitPrice\":\"99.00\",\"patronagePerUnit\":\"2.00\",\"submitForReview\":true}")
+  -d "{\"sku\":\"$SKU\",\"name\":\"Smoke Test Honey\",\"category\":\"Produce\",\"unitPrice\":\"99.00\",\"submitForReview\":true}")
 echo "$LIST_RES" | python3 -m json.tool
 
 echo "== 4. Publish listing =="

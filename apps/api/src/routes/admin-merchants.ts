@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { adminApproveListingSchema, adminUpdateVendorCommerceSchema } from "@b2ccoop/store-shared";
 import { createDb } from "../db/client";
 import type { StoreAdminVariables } from "../middleware/store-admin-auth";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../services/merchant-listings";
 import { rotateVendorToken, listActiveVendors, VendorError } from "../services/vendors";
 import {
+  adminUpdateVendorCommerce,
   approveVendorProfileChange,
   listPendingProfileChanges,
   MerchantProfileError,
@@ -120,9 +122,15 @@ export async function patchApproveListing(c: AdminContext) {
     return c.json({ error: "vendorCode and sku required" }, 400);
   }
 
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = adminApproveListingSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+  }
+
   const { db, close } = createDb(dbUrl);
   try {
-    const listing = await approveListing(db, vendorCode, sku);
+    const listing = await approveListing(db, vendorCode, sku, parsed.data);
     return c.json({ ok: true, listing });
   } catch (err) {
     if (err instanceof MerchantListingError) {
@@ -185,6 +193,37 @@ export async function patchApproveVendorProfile(c: AdminContext) {
   const { db, close } = createDb(dbUrl);
   try {
     const profile = await approveVendorProfileChange(db, vendorCode);
+    return c.json({ ok: true, profile });
+  } catch (err) {
+    if (err instanceof MerchantProfileError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function patchAdminVendorCommerce(c: AdminContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = c.req.param("code");
+  if (!vendorCode) {
+    return c.json({ error: "Vendor code required" }, 400);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = adminUpdateVendorCommerceSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const profile = await adminUpdateVendorCommerce(db, vendorCode, parsed.data);
     return c.json({ ok: true, profile });
   } catch (err) {
     if (err instanceof MerchantProfileError) {

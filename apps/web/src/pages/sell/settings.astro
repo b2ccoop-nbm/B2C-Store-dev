@@ -11,7 +11,7 @@ import Textarea from "@/components/atoms/Textarea.astro";
   <header class="mb-6">
     <h1 class="text-display m-0">Store settings</h1>
     <p class="text-body-sm text-neutral-500 mt-2 m-0">
-      Update your storefront profile. Description and contact details save immediately. Business name changes need coop officer approval.
+      Update your storefront profile, optional buyer pickup point, and delivery defaults. Business name changes need coop officer approval.
     </p>
   </header>
 
@@ -21,6 +21,7 @@ import Textarea from "@/components/atoms/Textarea.astro";
     <form id="merchant-settings-form" class="hidden flex flex-col gap-4">
       <div class="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-body-sm">
         <p class="m-0"><span class="text-neutral-500">Vendor code:</span> <code id="settings-vendor-code" class="font-mono font-semibold">—</code></p>
+        <p class="m-0 mt-1"><span class="text-neutral-500">Seller type:</span> <span id="settings-seller-kind" class="font-semibold">—</span></p>
         <p class="m-0 mt-1"><span class="text-neutral-500">Storefront:</span> <a id="settings-storefront-link" href="#" class="text-brand-600 font-semibold no-underline">/store/…</a></p>
       </div>
 
@@ -42,6 +43,43 @@ import Textarea from "@/components/atoms/Textarea.astro";
       <Input id="settings-email" name="email" type="email" label="Store contact email" autocomplete="email" />
       <Input id="settings-phone" name="contactPhone" type="tel" label="Contact phone" inputMode="tel" placeholder="09XX XXX XXXX" />
       <Textarea id="settings-description" name="description" label="About your business" rows={4} hint="Shown on your public storefront." />
+
+      <div class="border-t border-neutral-200 pt-4">
+        <h2 class="text-title m-0 mb-2">Fulfillment</h2>
+        <p class="text-body-sm text-neutral-500 m-0 mb-4">Delivery is the default checkout path. Register a pickup point if buyers may collect orders from you directly.</p>
+        <label class="flex items-start gap-3 text-body-sm mb-4">
+          <input id="settings-pickup-enabled" type="checkbox" class="mt-1" />
+          <span>Offer buyer pickup at my location</span>
+        </label>
+        <div id="pickup-fields" class="hidden flex flex-col gap-4">
+          <Input id="settings-pickup-address" name="pickupAddress" type="text" label="Pickup address" placeholder="Building, street, barangay, city" />
+          <Input id="settings-pickup-landmark" name="pickupLandmark" type="text" label="Landmark (optional)" />
+          <Input id="settings-pickup-hours" name="pickupHours" type="text" label="Pickup hours" placeholder="Mon–Sat 9am–5pm" />
+          <Input id="settings-pickup-phone" name="pickupPhone" type="tel" label="Pickup contact phone" inputMode="tel" />
+          <Textarea id="settings-pickup-instructions" name="pickupInstructions" label="Pickup instructions" rows={3} hint="Gate codes, where to park, etc." />
+        </div>
+        <Input
+          id="settings-delivery-rate"
+          name="deliveryPerItem"
+          type="text"
+          label="Default delivery per item (PHP, optional)"
+          inputMode="decimal"
+          placeholder="50.00"
+          hint="Overrides platform default (₱50/item) for your listings when no product-level rate is set."
+        />
+      </div>
+
+      <div id="partner-fee-field" class="hidden border-t border-neutral-200 pt-4">
+        <Input
+          id="settings-partner-fee"
+          name="partnerListingFeePercent"
+          type="text"
+          label="Default listing fee (% of SRP)"
+          inputMode="decimal"
+          placeholder="10.00"
+          hint="Applied to new partner listings unless overridden per product."
+        />
+      </div>
 
       <p id="settings-error" class="hidden text-body-sm text-danger-600 m-0" role="alert" />
       <p id="settings-success" class="hidden text-body-sm text-success-600 m-0" role="status" />

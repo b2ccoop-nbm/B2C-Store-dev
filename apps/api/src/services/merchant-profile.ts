@@ -1,8 +1,8 @@
 import { and, eq, isNotNull } from "drizzle-orm";
+import type { AdminUpdateVendorCommerceRequest, UpdateMerchantProfileRequest } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { vendors } from "../db/schema";
 import { slugify } from "../lib/slug";
-import type { UpdateMerchantProfileRequest } from "@b2ccoop/store-shared";
 
 export class MerchantProfileError extends Error {
   constructor(
@@ -12,6 +12,24 @@ export class MerchantProfileError extends Error {
     super(message);
     this.name = "MerchantProfileError";
   }
+}
+
+function optionalMoney(value: string | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new MerchantProfileError("Invalid delivery rate");
+  }
+  return n.toFixed(2);
+}
+
+function optionalPercent(value: string | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > 100) {
+    throw new MerchantProfileError("Invalid listing fee percent");
+  }
+  return n.toFixed(2);
 }
 
 function serializeProfile(row: typeof vendors.$inferSelect) {
@@ -24,6 +42,15 @@ function serializeProfile(row: typeof vendors.$inferSelect) {
     ownerEmail: row.ownerEmail,
     contactPhone: row.contactPhone,
     businessType: row.businessType as "product" | "service" | "farm" | "food",
+    sellerKind: row.sellerKind,
+    pickupEnabled: row.pickupEnabled,
+    pickupAddress: row.pickupAddress,
+    pickupLandmark: row.pickupLandmark,
+    pickupHours: row.pickupHours,
+    pickupInstructions: row.pickupInstructions,
+    pickupPhone: row.pickupPhone,
+    deliveryPerItem: row.deliveryPerItem,
+    partnerListingFeePercent: row.partnerListingFeePercent,
     pendingName: row.pendingName,
     pendingSlug: row.pendingSlug,
   };
@@ -50,6 +77,35 @@ async function uniqueVendorSlug(db: StoreDatabase, base: string, excludeVendorId
     if (!existing[0] || existing[0].id === excludeVendorId) return slug;
     suffix += 1;
     slug = `${base}-${suffix}`;
+  }
+}
+
+function applyCommerceFields(
+  updates: Partial<typeof vendors.$inferInsert>,
+  input: UpdateMerchantProfileRequest,
+) {
+  if (input.pickupEnabled !== undefined) {
+    updates.pickupEnabled = input.pickupEnabled;
+    if (!input.pickupEnabled) {
+      updates.pickupAddress = null;
+      updates.pickupLandmark = null;
+      updates.pickupHours = null;
+      updates.pickupInstructions = null;
+      updates.pickupPhone = null;
+    }
+  }
+  if (input.pickupAddress !== undefined) updates.pickupAddress = input.pickupAddress?.trim() || null;
+  if (input.pickupLandmark !== undefined) updates.pickupLandmark = input.pickupLandmark?.trim() || null;
+  if (input.pickupHours !== undefined) updates.pickupHours = input.pickupHours?.trim() || null;
+  if (input.pickupInstructions !== undefined) {
+    updates.pickupInstructions = input.pickupInstructions?.trim() || null;
+  }
+  if (input.pickupPhone !== undefined) updates.pickupPhone = input.pickupPhone?.trim() || null;
+  if (input.deliveryPerItem !== undefined) {
+    updates.deliveryPerItem = optionalMoney(input.deliveryPerItem);
+  }
+  if (input.partnerListingFeePercent !== undefined) {
+    updates.partnerListingFeePercent = optionalPercent(input.partnerListingFeePercent);
   }
 }
 
@@ -82,6 +138,15 @@ export async function updateMerchantProfile(
     updates.businessType = input.businessType;
   }
 
+  applyCommerceFields(updates, input);
+
+  if (input.pickupEnabled === true) {
+    const address = input.pickupAddress ?? vendor.pickupAddress;
+    if (!address?.trim()) {
+      throw new MerchantProfileError("Pickup address is required when pickup is enabled");
+    }
+  }
+
   if (input.name !== undefined) {
     const nextName = input.name.trim();
     if (!nextName) {
@@ -109,6 +174,35 @@ export async function updateMerchantProfile(
     profile: serializeProfile(updated[0]!),
     nameChangePending,
   };
+}
+
+export async function adminUpdateVendorCommerce(
+  db: StoreDatabase,
+  vendorCode: string,
+  input: AdminUpdateVendorCommerceRequest,
+) {
+  const vendor = await getVendorRow(db, vendorCode);
+  const updates: Partial<typeof vendors.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.sellerKind !== undefined) {
+    updates.sellerKind = input.sellerKind;
+  }
+  if (input.deliveryPerItem !== undefined) {
+    updates.deliveryPerItem = optionalMoney(input.deliveryPerItem);
+  }
+  if (input.partnerListingFeePercent !== undefined) {
+    updates.partnerListingFeePercent = optionalPercent(input.partnerListingFeePercent);
+  }
+
+  const updated = await db
+    .update(vendors)
+    .set(updates)
+    .where(eq(vendors.id, vendor.id))
+    .returning();
+
+  return serializeProfile(updated[0]!);
 }
 
 export async function listPendingProfileChanges(db: StoreDatabase) {

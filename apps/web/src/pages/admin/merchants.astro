@@ -52,6 +52,17 @@ import AdminSignInPanel from "@/components/organisms/AdminSignInPanel.astro";
     <div id="profile-changes-panel" />
   </section>
 
+  <section class="mb-10 max-w-2xl">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+      <div>
+        <h2 class="text-title m-0">Platform commerce settings</h2>
+        <p class="text-body-sm text-neutral-500 mt-1 m-0">Default delivery rates, order cap, partner listing fee, and patronage rate.</p>
+      </div>
+      <Button type="button" variant="secondary" id="load-platform-settings">Load settings</Button>
+    </div>
+    <div id="platform-settings-panel" />
+  </section>
+
   <section class="max-w-2xl">
     <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
       <h2 class="text-title m-0">Listings awaiting approval</h2>

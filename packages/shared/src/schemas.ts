@@ -139,13 +139,40 @@ export type MerchantBindFirebaseRequest = z.infer<typeof merchantBindFirebaseReq
 export const listingStatusSchema = z.enum(["DRAFT", "PENDING_REVIEW", "ACTIVE", "REJECTED"]);
 export type ListingStatus = z.infer<typeof listingStatusSchema>;
 
+export const sellerKindSchema = z.enum(["COOP", "MEMBER", "PARTNER"]);
+export type SellerKind = z.infer<typeof sellerKindSchema>;
+
+export const deliveryTierSchema = z.enum(["standard", "bulky", "remote"]);
+export type DeliveryTier = z.infer<typeof deliveryTierSchema>;
+
+const moneyStringSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+const percentStringSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+
+export const platformCommerceSettingsSchema = z.object({
+  defaultDeliveryPerItem: moneyStringSchema,
+  maxDeliveryPerOrder: moneyStringSchema,
+  defaultPartnerListingFeePercent: percentStringSchema,
+  patronageRatePercent: percentStringSchema,
+});
+
+export type PlatformCommerceSettings = z.infer<typeof platformCommerceSettingsSchema>;
+
+export const updatePlatformSettingsSchema = platformCommerceSettingsSchema.partial();
+export type UpdatePlatformSettingsRequest = z.infer<typeof updatePlatformSettingsSchema>;
+
 export const createListingRequestSchema = z.object({
   /** Optional prefix; server appends a UTC timestamp for uniqueness. */
   sku: z.string().min(1).max(48).optional(),
   name: z.string().min(2).max(255),
   category: z.string().min(1).max(128),
-  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
-  patronagePerUnit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  /** Suggested retail price (SRP) in PHP. */
+  unitPrice: moneyStringSchema,
+  /** Partner listing fee % of SRP; ignored for coop/member sellers. */
+  listingFeePercent: percentStringSchema.optional(),
+  deliveryTier: deliveryTierSchema.default("standard"),
+  /** Product-level delivery override per item (PHP). */
+  deliveryPerItem: moneyStringSchema.optional(),
+  patronageEligible: z.boolean().default(true),
   submitForReview: z.boolean().default(true),
 });
 
@@ -154,8 +181,11 @@ export type CreateListingRequest = z.infer<typeof createListingRequestSchema>;
 export const updateListingRequestSchema = z.object({
   name: z.string().min(2).max(255).optional(),
   category: z.string().min(1).max(128).optional(),
-  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-  patronagePerUnit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  unitPrice: moneyStringSchema.optional(),
+  listingFeePercent: percentStringSchema.nullable().optional(),
+  deliveryTier: deliveryTierSchema.optional(),
+  deliveryPerItem: moneyStringSchema.nullable().optional(),
+  patronageEligible: z.boolean().optional(),
   /** New SKU prefix — server assigns a fresh timestamp suffix. */
   skuBase: z.string().min(1).max(48).optional(),
   submitForReview: z.boolean().optional(),
@@ -163,13 +193,28 @@ export const updateListingRequestSchema = z.object({
 
 export type UpdateListingRequest = z.infer<typeof updateListingRequestSchema>;
 
+export const adminApproveListingSchema = z.object({
+  listingFeePercent: percentStringSchema.optional(),
+  deliveryPerItem: moneyStringSchema.nullable().optional(),
+  deliveryTier: deliveryTierSchema.optional(),
+});
+
+export type AdminApproveListingRequest = z.infer<typeof adminApproveListingSchema>;
+
 export const merchantListingSchema = z.object({
   vendorCode: z.string(),
   sku: z.string(),
   name: z.string(),
   category: z.string(),
   unitPrice: z.string(),
+  salesPerUnit: z.string(),
+  vendorPayablePerUnit: z.string(),
   patronagePerUnit: z.string(),
+  listingFeePercent: z.string().nullable().optional(),
+  deliveryPerItem: z.string().nullable().optional(),
+  deliveryTier: deliveryTierSchema,
+  effectiveDeliveryPerItem: z.string().optional(),
+  patronageEligible: z.boolean(),
   currency: z.string(),
   imageUrl: z.string().url().nullable().optional(),
   listingStatus: listingStatusSchema,
@@ -203,6 +248,15 @@ export const merchantProfileSchema = z.object({
   ownerEmail: z.string().nullable(),
   contactPhone: z.string().nullable(),
   businessType: merchantBusinessTypeSchema,
+  sellerKind: sellerKindSchema,
+  pickupEnabled: z.boolean(),
+  pickupAddress: z.string().nullable(),
+  pickupLandmark: z.string().nullable(),
+  pickupHours: z.string().nullable(),
+  pickupInstructions: z.string().nullable(),
+  pickupPhone: z.string().nullable(),
+  deliveryPerItem: z.string().nullable(),
+  partnerListingFeePercent: z.string().nullable(),
   pendingName: z.string().nullable(),
   pendingSlug: z.string().nullable(),
 });
@@ -215,6 +269,22 @@ export const updateMerchantProfileSchema = z.object({
   email: z.string().email().max(255).optional(),
   contactPhone: z.string().min(7).max(32).nullable().optional(),
   businessType: merchantBusinessTypeSchema.optional(),
+  pickupEnabled: z.boolean().optional(),
+  pickupAddress: z.string().max(512).nullable().optional(),
+  pickupLandmark: z.string().max(255).nullable().optional(),
+  pickupHours: z.string().max(255).nullable().optional(),
+  pickupInstructions: z.string().max(2000).nullable().optional(),
+  pickupPhone: z.string().max(32).nullable().optional(),
+  deliveryPerItem: moneyStringSchema.nullable().optional(),
+  partnerListingFeePercent: percentStringSchema.nullable().optional(),
 });
 
 export type UpdateMerchantProfileRequest = z.infer<typeof updateMerchantProfileSchema>;
+
+export const adminUpdateVendorCommerceSchema = z.object({
+  sellerKind: sellerKindSchema.optional(),
+  deliveryPerItem: moneyStringSchema.nullable().optional(),
+  partnerListingFeePercent: percentStringSchema.nullable().optional(),
+});
+
+export type AdminUpdateVendorCommerceRequest = z.infer<typeof adminUpdateVendorCommerceSchema>;

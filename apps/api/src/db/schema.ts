@@ -40,6 +40,30 @@ export const listingStatusEnum = pgEnum("listing_status", [
   "REJECTED",
 ]);
 
+export const sellerKindEnum = pgEnum("seller_kind", ["COOP", "MEMBER", "PARTNER"]);
+
+export const deliveryTierEnum = pgEnum("delivery_tier", ["standard", "bulky", "remote"]);
+
+export const platformSettings = pgTable("platform_settings", {
+  id: varchar("id", { length: 32 }).primaryKey().default("default"),
+  defaultDeliveryPerItem: numeric("default_delivery_per_item", { precision: 14, scale: 2 })
+    .notNull()
+    .default("50.00"),
+  maxDeliveryPerOrder: numeric("max_delivery_per_order", { precision: 14, scale: 2 })
+    .notNull()
+    .default("500.00"),
+  defaultPartnerListingFeePercent: numeric("default_partner_listing_fee_percent", {
+    precision: 5,
+    scale: 2,
+  })
+    .notNull()
+    .default("10.00"),
+  patronageRatePercent: numeric("patronage_rate_percent", { precision: 5, scale: 2 })
+    .notNull()
+    .default("8.00"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const vendors = pgTable("vendors", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: varchar("code", { length: 64 }).notNull().unique(),
@@ -57,6 +81,17 @@ export const vendors = pgTable("vendors", {
   apiTokenHash: varchar("api_token_hash", { length: 64 }),
   /** Firebase Auth UID of the store owner (linked after member sign-in). */
   firebaseUid: varchar("firebase_uid", { length: 128 }),
+  sellerKind: sellerKindEnum("seller_kind").notNull().default("MEMBER"),
+  pickupEnabled: boolean("pickup_enabled").notNull().default(false),
+  pickupAddress: varchar("pickup_address", { length: 512 }),
+  pickupLandmark: varchar("pickup_landmark", { length: 255 }),
+  pickupHours: varchar("pickup_hours", { length: 255 }),
+  pickupInstructions: text("pickup_instructions"),
+  pickupPhone: varchar("pickup_phone", { length: 32 }),
+  /** Merchant override for per-item delivery (PHP). */
+  deliveryPerItem: numeric("delivery_per_item", { precision: 14, scale: 2 }),
+  /** Default partner listing fee % for this vendor's products. */
+  partnerListingFeePercent: numeric("partner_listing_fee_percent", { precision: 5, scale: 2 }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -98,6 +133,10 @@ export const products = pgTable(
     currency: varchar("currency", { length: 3 }).notNull().default("PHP"),
     /** Public URL for product photo (R2). */
     imageUrl: varchar("image_url", { length: 512 }),
+    listingFeePercent: numeric("listing_fee_percent", { precision: 5, scale: 2 }),
+    deliveryPerItem: numeric("delivery_per_item", { precision: 14, scale: 2 }),
+    deliveryTier: deliveryTierEnum("delivery_tier").notNull().default("standard"),
+    patronageEligible: boolean("patronage_eligible").notNull().default(true),
     listingStatus: listingStatusEnum("listing_status").notNull().default("ACTIVE"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -155,6 +194,7 @@ export const patronageAccruals = pgTable("patronage_accruals", {
 export type Vendor = typeof vendors.$inferSelect;
 export type SellerApplication = typeof sellerApplications.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type PlatformSettings = typeof platformSettings.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderLine = typeof orderLines.$inferSelect;
 export type PatronageAccrual = typeof patronageAccruals.$inferSelect;

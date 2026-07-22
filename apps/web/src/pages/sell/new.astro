@@ -27,7 +27,7 @@ const categories = [
 
   <Card class="max-w-xl" id="listing-wizard-panel">
     <div id="wizard-step-1" class="flex flex-col gap-4">
-      <p class="text-body-sm text-neutral-500 m-0">What are you listing? (Product only for MVP)</p>
+      <p class="text-body-sm text-neutral-500 m-0">Set your suggested retail price (SRP). Coop revenue, vendor payout, and member patronage are calculated automatically.</p>
       <Input id="listing-name" name="name" type="text" label="Product name" required placeholder="Organic brown rice 5kg" />
       <Input
         id="listing-sku-prefix"
@@ -49,21 +49,48 @@ const categories = [
         id="listing-price"
         name="unitPrice"
         type="text"
-        label="Price (PHP)"
+        label="SRP (PHP)"
         required
         inputMode="decimal"
         placeholder="199.00"
-        hint="Selling price members will pay at checkout"
+        hint="Suggested retail price — what buyers pay per item"
+      />
+      <div id="listing-fee-field" class="hidden">
+        <Input
+          id="listing-fee-percent"
+          name="listingFeePercent"
+          type="text"
+          label="Listing fee (% of SRP)"
+          inputMode="decimal"
+          placeholder="10.00"
+          hint="Partner sellers: coop listing fee as % of SRP. Leave blank to use your store default."
+        />
+      </div>
+      <Select
+        id="listing-delivery-tier"
+        name="deliveryTier"
+        label="Delivery tier"
+        options={[
+          { value: "standard", label: "Standard (1× platform rate)" },
+          { value: "bulky", label: "Bulky (2×)" },
+          { value: "remote", label: "Remote (3×)" },
+        ]}
+        hint="Per-item delivery fee uses product override → your store rate → tier multiplier → platform default (₱50)."
       />
       <Input
-        id="listing-patronage"
-        name="patronagePerUnit"
+        id="listing-delivery-override"
+        name="deliveryPerItem"
         type="text"
-        label="Patronage per unit (PHP)"
+        label="Delivery override per item (PHP, optional)"
         inputMode="decimal"
-        value="0"
-        hint="Optional member patronage accrual per item sold"
+        placeholder=""
+        hint="Fixed per-item delivery for this product. Overrides tier calculation when set."
       />
+      <label class="flex items-start gap-3 text-body-sm">
+        <input id="listing-patronage-eligible" type="checkbox" checked class="mt-1" />
+        <span>Eligible for member patronage on coop revenue capture</span>
+      </label>
+      <div id="listing-split-preview" aria-live="polite" />
       <div>
         <label for="listing-image" class="block text-body-sm font-semibold text-neutral-800 mb-2">Product photo</label>
         <input
