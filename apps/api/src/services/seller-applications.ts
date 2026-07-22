@@ -7,7 +7,9 @@ import {
   generateStatusAccessToken,
   hashStatusAccessToken,
 } from "../lib/status-access-token";
+import { provisionVendorInAccounting } from "./accounting-vendors";
 import { generateVendorToken, hashVendorToken } from "../lib/vendor-token";
+import type { WorkerEnv } from "../env";
 
 export class SellerApplicationError extends Error {
   constructor(
@@ -179,6 +181,7 @@ async function uniqueVendorSlug(db: StoreDatabase, base: string): Promise<string
 
 export async function approveSellerApplication(
   db: StoreDatabase,
+  env: WorkerEnv,
   applicationId: string,
   reviewNotes?: string,
 ) {
@@ -236,6 +239,12 @@ export async function approveSellerApplication(
 
   const vendor = vendorInserted[0]!;
 
+  const accountingProvision = await provisionVendorInAccounting(env, {
+    code: vendor.code,
+    name: vendor.name,
+    email: vendor.email,
+  });
+
   const updated = await db
     .update(sellerApplications)
     .set({
@@ -255,6 +264,9 @@ export async function approveSellerApplication(
       name: vendor.name,
     },
     accessToken,
+    accountingProvision: accountingProvision.ok
+      ? { ok: true as const, created: accountingProvision.created }
+      : { ok: false as const, error: accountingProvision.error ?? "Accounting vendor provision failed" },
     ...(firebaseLinkSkipped
       ? {
           firebaseLinkSkipped: true as const,

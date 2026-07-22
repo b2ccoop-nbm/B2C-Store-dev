@@ -54,7 +54,7 @@ export async function patchApproveApplication(c: AdminContext) {
 
   const { db, close } = createDb(dbUrl);
   try {
-    const result = await approveSellerApplication(db, applicationId, reviewNotes);
+    const result = await approveSellerApplication(db, c.env, applicationId, reviewNotes);
     return c.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof SellerApplicationError) {

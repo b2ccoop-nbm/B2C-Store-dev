@@ -22,6 +22,7 @@ import {
 import {
   adminAuth,
   getAdminPendingOrders,
+  patchAdminOrderFulfillment,
   patchConfirmPickup,
 } from "./routes/admin-orders";
 import { getAdminSession } from "./routes/admin-session";
@@ -33,6 +34,7 @@ import {
   merchantAuth,
   merchantVendorScope,
   patchMerchantConfirmPickup,
+  patchMerchantFulfillment,
   patchMerchantListing,
   patchMerchantProfileRoute,
   postMerchantListing,
@@ -95,9 +97,11 @@ app.get("/", (c) =>
       "POST /merchant/listings/:sku/image",
       "GET /media/products/*",
       "GET /merchant/orders/pending",
+      "PATCH /merchant/orders/:id/fulfillment",
       "PATCH /merchant/orders/:id/confirm-pickup",
       "GET /admin/session",
       "GET /admin/orders/pending",
+      "PATCH /admin/orders/:id/fulfillment",
       "PATCH /admin/orders/:id/confirm-pickup",
       "GET /admin/seller-applications",
       "GET /admin/vendors",
@@ -167,14 +171,18 @@ merchant.patch("/listings/:sku", (c) => patchMerchantListing(c));
 merchant.delete("/listings/:sku", (c) => deleteMerchantListingRoute(c));
 merchant.post("/listings/:sku/image", (c) => postMerchantListingImage(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
+merchant.patch("/orders/:id/fulfillment", (c) => patchMerchantFulfillment(c));
 merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));
+merchant.patch("/orders/:id/confirm", (c) => patchMerchantConfirmPickup(c));
 app.route("/merchant", merchant);
 
 const admin = new Hono<{ Bindings: WorkerEnv; Variables: StoreAdminVariables }>();
 admin.use("*", adminAuth);
 admin.get("/session", (c) => getAdminSession(c));
 admin.get("/orders/pending", (c) => getAdminPendingOrders(c));
+admin.patch("/orders/:id/fulfillment", (c) => patchAdminOrderFulfillment(c));
 admin.patch("/orders/:id/confirm-pickup", (c) => patchConfirmPickup(c));
+admin.patch("/orders/:id/confirm", (c) => patchConfirmPickup(c));
 admin.get("/seller-applications", (c) => getAdminPendingApplications(c));
 admin.get("/vendors", (c) => getAdminVendors(c));
 admin.get("/profile-changes/pending", (c) => getAdminPendingProfileChanges(c));

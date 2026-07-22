@@ -1,11 +1,18 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type { DeliveryAddress } from "@b2ccoop/store-shared";
+import type { DeliveryAddress, FulfillmentStatus } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { orderLines, orders } from "../db/schema";
 import { postMarketplaceSale } from "../integrations/accounting-client";
 import type { WorkerEnv } from "../env";
 
 type OrderRow = typeof orders.$inferSelect;
+
+const FULFILLMENT_FLOW: FulfillmentStatus[] = [
+  "pending",
+  "packed",
+  "out_for_delivery",
+  "delivered",
+];
 
 export class OrderError extends Error {
   constructor(
@@ -15,6 +22,19 @@ export class OrderError extends Error {
     super(message);
     this.name = "OrderError";
   }
+}
+
+function orderTotalAmount(order: OrderRow, metadata: Record<string, unknown>): string {
+  if (typeof metadata.totalAmount === "string") return metadata.totalAmount;
+  return (Number(order.grossAmount) + Number(order.deliveryFeeAmount ?? 0)).toFixed(2);
+}
+
+function deliverySummary(order: OrderRow): { city: string | null; phone: string | null } {
+  if (!order.deliveryAddress || typeof order.deliveryAddress !== "object") {
+    return { city: null, phone: null };
+  }
+  const address = order.deliveryAddress as DeliveryAddress;
+  return { city: address.city ?? null, phone: address.phone ?? null };
 }
 
 export async function getOrderById(db: StoreDatabase, orderId: string) {
@@ -35,10 +55,7 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
 
   const deliveryFeeAmount = order.deliveryFeeAmount ?? "0.00";
   const meta = metadata as Record<string, unknown>;
-  const totalAmount =
-    typeof meta.totalAmount === "string"
-      ? meta.totalAmount
-      : (Number(order.grossAmount) + Number(deliveryFeeAmount)).toFixed(2);
+  const totalAmount = orderTotalAmount(order, meta);
 
   const deliveryAddress =
     order.deliveryAddress && typeof order.deliveryAddress === "object"
@@ -50,6 +67,7 @@ export async function getOrderById(db: StoreDatabase, orderId: string) {
     externalId: order.externalId,
     status: order.status,
     fulfillmentMode: order.fulfillmentMode,
+    fulfillmentStatus: order.fulfillmentStatus,
     guestEmail: order.guestEmail,
     participantId: order.participantId,
     vendorCode: order.vendorCode,
@@ -84,13 +102,18 @@ async function postOrderToAccounting(
   channel: string,
 ) {
   const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, order.id));
+  const deliveryFee = Number(order.deliveryFeeAmount ?? 0);
+  const merchandiseGross = Number(order.grossAmount);
+  const merchandiseSales = Number(order.salesAmount);
+  const grossAmount = merchandiseGross + deliveryFee;
+  const salesAmount = merchandiseSales + deliveryFee;
 
   return postMarketplaceSale(env, {
     externalId: order.externalId,
     occurredAt: new Date().toISOString(),
     currency: order.currency,
-    grossAmount: Number(order.grossAmount),
-    salesAmount: Number(order.salesAmount),
+    grossAmount,
+    salesAmount,
     vendorPayableAmount: Number(order.vendorPayableAmount),
     cogsAmount: Number(order.cogsAmount),
     patronageAmount: Number(order.patronageAmount),
@@ -100,6 +123,8 @@ async function postOrderToAccounting(
     metadata: {
       orderId: order.id,
       guestEmail: order.guestEmail ?? undefined,
+      fulfillmentMode: order.fulfillmentMode,
+      deliveryFeeAmount: order.deliveryFeeAmount,
       lineItems: lines,
       channel,
     },
@@ -155,7 +180,28 @@ async function finalizePaidOrder(
   };
 }
 
-export async function confirmPickupAndPostLedger(
+function assertCanConfirm(order: OrderRow) {
+  if (order.status === "POSTED_TO_LEDGER") return;
+  if (order.status === "CANCELLED") {
+    throw new OrderError("Order is cancelled", 409);
+  }
+
+  if (order.fulfillmentMode === "merchant_pickup") {
+    if (order.status !== "PENDING_PICKUP" && order.status !== "FAILED") {
+      throw new OrderError(`Cannot confirm pickup for status ${order.status}`, 409);
+    }
+    return;
+  }
+
+  if (order.status !== "PENDING_DELIVERY" && order.status !== "FAILED") {
+    throw new OrderError(`Cannot confirm delivery for status ${order.status}`, 409);
+  }
+  if (order.fulfillmentStatus !== "delivered") {
+    throw new OrderError("Mark the order as delivered before confirming payment", 409);
+  }
+}
+
+export async function confirmFulfillmentAndPostLedger(
   db: StoreDatabase,
   env: WorkerEnv,
   orderId: string,
@@ -175,13 +221,7 @@ export async function confirmPickupAndPostLedger(
     };
   }
 
-  if (order.status === "CANCELLED") {
-    throw new OrderError("Order is cancelled", 409);
-  }
-
-  if (order.status !== "PENDING_PICKUP" && order.status !== "PENDING_DELIVERY" && order.status !== "FAILED") {
-    throw new OrderError(`Cannot confirm fulfillment for status ${order.status}`, 409);
-  }
+  assertCanConfirm(order);
 
   await db
     .update(orders)
@@ -190,9 +230,109 @@ export async function confirmPickupAndPostLedger(
 
   const paid = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   const channel =
-    paid[0]?.fulfillmentMode === "merchant_pickup" ? "store_pickup_confirm" : "store_delivery_confirm";
+    paid[0]?.fulfillmentMode === "merchant_pickup"
+      ? "store_pickup_confirm"
+      : "store_delivery_confirm";
   return finalizePaidOrder(db, env, paid[0]!, channel);
 }
+
+/** @deprecated Use confirmFulfillmentAndPostLedger */
+export const confirmPickupAndPostLedger = confirmFulfillmentAndPostLedger;
+
+export async function updateOrderFulfillmentStatus(
+  db: StoreDatabase,
+  orderId: string,
+  vendorCode: string | undefined,
+  nextStatus: FulfillmentStatus,
+) {
+  const rows = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const order = rows[0];
+  if (!order) {
+    throw new OrderError("Order not found", 404);
+  }
+  if (vendorCode && order.vendorCode !== vendorCode) {
+    throw new OrderError("Order does not belong to your store", 409);
+  }
+  if (order.status !== "PENDING_DELIVERY" && order.status !== "PENDING_PICKUP") {
+    throw new OrderError(`Cannot update fulfillment for status ${order.status}`, 409);
+  }
+
+  const currentIndex = FULFILLMENT_FLOW.indexOf(order.fulfillmentStatus as FulfillmentStatus);
+  const nextIndex = FULFILLMENT_FLOW.indexOf(nextStatus);
+  if (currentIndex < 0 || nextIndex < 0) {
+    throw new OrderError("Invalid fulfillment status", 400);
+  }
+
+  const pickupSkip =
+    order.fulfillmentMode === "merchant_pickup" &&
+    order.fulfillmentStatus === "packed" &&
+    nextStatus === "delivered";
+  const sequential = nextIndex === currentIndex + 1;
+
+  if (!sequential && !pickupSkip) {
+    if (order.fulfillmentMode === "merchant_pickup" && nextStatus === "out_for_delivery") {
+      throw new OrderError("Pickup orders skip out for delivery — mark as picked up instead", 409);
+    }
+    throw new OrderError(
+      `Fulfillment must advance one step at a time (${order.fulfillmentStatus} → ${nextStatus})`,
+      409,
+    );
+  }
+
+  const updated = await db
+    .update(orders)
+    .set({
+      fulfillmentStatus: nextStatus,
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  return serializePendingOrder(updated[0]!);
+}
+
+function serializePendingOrder(order: OrderRow) {
+  const metadata =
+    typeof order.metadata === "object" && order.metadata
+      ? (order.metadata as Record<string, unknown>)
+      : {};
+  const { city, phone } = deliverySummary(order);
+
+  return {
+    orderId: order.id,
+    externalId: order.externalId,
+    guestEmail: order.guestEmail,
+    vendorCode: order.vendorCode,
+    status: order.status,
+    fulfillmentMode: order.fulfillmentMode,
+    fulfillmentStatus: order.fulfillmentStatus,
+    grossAmount: order.grossAmount,
+    deliveryFeeAmount: order.deliveryFeeAmount ?? "0.00",
+    totalAmount: orderTotalAmount(order, metadata),
+    createdAt: order.createdAt.toISOString(),
+    deliveryCity: city,
+    deliveryPhone: phone,
+  };
+}
+
+export async function listPendingFulfillmentOrders(db: StoreDatabase, vendorCode?: string) {
+  const pendingStatuses = ["PENDING_PICKUP", "PENDING_DELIVERY"] as const;
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(
+      vendorCode
+        ? and(inArray(orders.status, [...pendingStatuses]), eq(orders.vendorCode, vendorCode))
+        : inArray(orders.status, [...pendingStatuses]),
+    );
+
+  return rows
+    .map((row) => serializePendingOrder(row))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** @deprecated Use listPendingFulfillmentOrders */
+export const listPendingPickupOrders = listPendingFulfillmentOrders;
 
 /** PayMongo webhook — idempotent by externalId / order status. */
 export async function fulfillOnlinePayment(
@@ -219,6 +359,7 @@ export async function fulfillOnlinePayment(
     .update(orders)
     .set({
       status: "PAID",
+      fulfillmentStatus: "delivered",
       updatedAt: new Date(),
       metadata: {
         ...(typeof order.metadata === "object" && order.metadata ? order.metadata : {}),
@@ -233,34 +374,23 @@ export async function fulfillOnlinePayment(
   return { ...result, skipped: false as const };
 }
 
-export async function listPendingPickupOrders(db: StoreDatabase, vendorCode?: string) {
-  const pendingStatuses = ["PENDING_PICKUP", "PENDING_DELIVERY"] as const;
-  const rows = await db
-    .select({
-      orderId: orders.id,
-      externalId: orders.externalId,
-      guestEmail: orders.guestEmail,
-      vendorCode: orders.vendorCode,
-      status: orders.status,
-      fulfillmentMode: orders.fulfillmentMode,
-      grossAmount: orders.grossAmount,
-      deliveryFeeAmount: orders.deliveryFeeAmount,
-      createdAt: orders.createdAt,
-    })
-    .from(orders)
-    .where(
-      vendorCode
-        ? and(
-            inArray(orders.status, [...pendingStatuses]),
-            eq(orders.vendorCode, vendorCode),
-          )
-        : inArray(orders.status, [...pendingStatuses]),
-    );
+export function nextFulfillmentStatus(current: FulfillmentStatus): FulfillmentStatus | null {
+  const index = FULFILLMENT_FLOW.indexOf(current);
+  if (index < 0 || index >= FULFILLMENT_FLOW.length - 1) return null;
+  return FULFILLMENT_FLOW[index + 1]!;
+}
 
-  return rows
-    .map((r) => ({
-      ...r,
-      createdAt: r.createdAt.toISOString(),
-    }))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export function fulfillmentStatusLabel(status: FulfillmentStatus): string {
+  switch (status) {
+    case "pending":
+      return "New order";
+    case "packed":
+      return "Packed";
+    case "out_for_delivery":
+      return "Out for delivery";
+    case "delivered":
+      return "Delivered";
+    default:
+      return status;
+  }
 }

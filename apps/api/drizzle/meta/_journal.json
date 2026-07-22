@@ -64,6 +64,13 @@
       "when": 1781019600000,
       "tag": "0008_checkout_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781023200000,
+      "tag": "0009_fulfillment_status",
+      "breakpoints": true
     }
   ]
 }

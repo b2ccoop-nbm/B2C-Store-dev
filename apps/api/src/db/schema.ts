@@ -47,6 +47,13 @@ export const deliveryTierEnum = pgEnum("delivery_tier", ["standard", "bulky", "r
 
 export const fulfillmentModeEnum = pgEnum("fulfillment_mode", ["delivery", "merchant_pickup"]);
 
+export const fulfillmentStatusEnum = pgEnum("fulfillment_status", [
+  "pending",
+  "packed",
+  "out_for_delivery",
+  "delivered",
+]);
+
 export const platformSettings = pgTable("platform_settings", {
   id: varchar("id", { length: 32 }).primaryKey().default("default"),
   defaultDeliveryPerItem: numeric("default_delivery_per_item", { precision: 14, scale: 2 })
@@ -156,6 +163,7 @@ export const orders = pgTable("orders", {
   participantId: uuid("participant_id"),
   vendorCode: varchar("vendor_code", { length: 64 }).notNull(),
   fulfillmentMode: fulfillmentModeEnum("fulfillment_mode").notNull().default("delivery"),
+  fulfillmentStatus: fulfillmentStatusEnum("fulfillment_status").notNull().default("pending"),
   status: orderStatusEnum("status").notNull().default("PENDING_DELIVERY"),
   grossAmount: numeric("gross_amount", { precision: 14, scale: 2 }).notNull(),
   deliveryFeeAmount: numeric("delivery_fee_amount", { precision: 14, scale: 2 }).notNull().default("0"),

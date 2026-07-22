@@ -1,6 +1,11 @@
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
-import { createListingRequestSchema, updateMerchantProfileSchema, updateListingRequestSchema } from "@b2ccoop/store-shared";
+import {
+  createListingRequestSchema,
+  updateListingRequestSchema,
+  updateMerchantProfileSchema,
+  updateOrderFulfillmentSchema,
+} from "@b2ccoop/store-shared";
 import { createDb } from "../db/client";
 import { orders } from "../db/schema";
 import { getVendorCode, requireMerchantVendor } from "../middleware/merchant-scope";
@@ -19,7 +24,12 @@ import {
   MerchantProfileError,
   updateMerchantProfile,
 } from "../services/merchant-profile";
-import { confirmPickupAndPostLedger, listPendingPickupOrders, OrderError } from "../services/orders";
+import {
+  confirmFulfillmentAndPostLedger,
+  listPendingFulfillmentOrders,
+  OrderError,
+  updateOrderFulfillmentStatus,
+} from "../services/orders";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 import type { MerchantVariables } from "../middleware/vendor-auth";
 
@@ -265,8 +275,45 @@ export async function getMerchantPendingOrders(c: MerchantContext) {
   const vendorCode = getVendorCode(c);
   const { db, close } = createDb(dbUrl);
   try {
-    const ordersList = await listPendingPickupOrders(db, vendorCode);
+    const ordersList = await listPendingFulfillmentOrders(db, vendorCode);
     return c.json({ vendorCode, count: ordersList.length, orders: ordersList });
+  } finally {
+    await close();
+  }
+}
+
+export async function patchMerchantFulfillment(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const orderId = c.req.param("id");
+  if (!orderId) {
+    return c.json({ error: "Order id required" }, 400);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = updateOrderFulfillmentSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const { db, close } = createDb(dbUrl);
+  try {
+    const order = await updateOrderFulfillmentStatus(
+      db,
+      orderId,
+      vendorCode,
+      parsed.data.status,
+    );
+    return c.json({ ok: true, order });
+  } catch (err) {
+    if (err instanceof OrderError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
   } finally {
     await close();
   }
@@ -295,7 +342,7 @@ export async function patchMerchantConfirmPickup(c: MerchantContext) {
       return c.json({ error: "Order does not belong to your store" }, 403);
     }
 
-    const result = await confirmPickupAndPostLedger(db, c.env, orderId);
+    const result = await confirmFulfillmentAndPostLedger(db, c.env, orderId);
     return c.json(result);
   } catch (err) {
     if (err instanceof OrderError) {

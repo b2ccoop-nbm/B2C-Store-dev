@@ -41,6 +41,33 @@ export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export const fulfillmentModeSchema = z.enum(["delivery", "merchant_pickup"]);
 export type FulfillmentMode = z.infer<typeof fulfillmentModeSchema>;
 
+export const fulfillmentStatusSchema = z.enum(["pending", "packed", "out_for_delivery", "delivered"]);
+export type FulfillmentStatus = z.infer<typeof fulfillmentStatusSchema>;
+
+export const updateOrderFulfillmentSchema = z.object({
+  status: fulfillmentStatusSchema,
+});
+
+export type UpdateOrderFulfillmentRequest = z.infer<typeof updateOrderFulfillmentSchema>;
+
+export const pendingOrderSummarySchema = z.object({
+  orderId: z.string().uuid(),
+  externalId: z.string(),
+  guestEmail: z.string().nullable(),
+  vendorCode: z.string(),
+  status: orderStatusSchema,
+  fulfillmentMode: fulfillmentModeSchema,
+  fulfillmentStatus: fulfillmentStatusSchema,
+  grossAmount: z.string(),
+  deliveryFeeAmount: z.string(),
+  totalAmount: z.string(),
+  createdAt: z.string(),
+  deliveryCity: z.string().nullable().optional(),
+  deliveryPhone: z.string().nullable().optional(),
+});
+
+export type PendingOrderSummary = z.infer<typeof pendingOrderSummarySchema>;
+
 export const deliveryAddressSchema = z.object({
   recipientName: z.string().min(2).max(255),
   phone: z.string().min(7).max(32),
@@ -152,6 +179,7 @@ export const orderDetailSchema = z.object({
   externalId: z.string(),
   status: orderStatusSchema,
   fulfillmentMode: fulfillmentModeSchema,
+  fulfillmentStatus: fulfillmentStatusSchema,
   guestEmail: z.string().nullable(),
   participantId: z.string().uuid().nullable(),
   vendorCode: z.string(),
