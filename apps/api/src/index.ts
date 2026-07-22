@@ -27,9 +27,11 @@ import {
   merchantAuth,
   merchantVendorScope,
   patchMerchantConfirmPickup,
+  patchMerchantListing,
   patchMerchantProfileRoute,
   postMerchantListing,
   postMerchantListingImage,
+  deleteMerchantListingRoute,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
 import { getMemberMerchantContext } from "./routes/member-merchant";
@@ -79,6 +81,8 @@ app.get("/", (c) =>
       "PATCH /merchant/profile",
       "GET /merchant/listings",
       "POST /merchant/listings",
+      "PATCH /merchant/listings/:sku",
+      "DELETE /merchant/listings/:sku",
       "POST /merchant/listings/:sku/image",
       "GET /media/products/*",
       "GET /merchant/orders/pending",
@@ -145,6 +149,8 @@ merchant.get("/profile", (c) => getMerchantProfileRoute(c));
 merchant.patch("/profile", (c) => patchMerchantProfileRoute(c));
 merchant.get("/listings", (c) => getMerchantListings(c));
 merchant.post("/listings", (c) => postMerchantListing(c));
+merchant.patch("/listings/:sku", (c) => patchMerchantListing(c));
+merchant.delete("/listings/:sku", (c) => deleteMerchantListingRoute(c));
 merchant.post("/listings/:sku/image", (c) => postMerchantListingImage(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
 merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));

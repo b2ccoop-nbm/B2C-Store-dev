@@ -140,7 +140,8 @@ export const listingStatusSchema = z.enum(["DRAFT", "PENDING_REVIEW", "ACTIVE", 
 export type ListingStatus = z.infer<typeof listingStatusSchema>;
 
 export const createListingRequestSchema = z.object({
-  sku: z.string().min(1).max(64),
+  /** Optional prefix; server appends a UTC timestamp for uniqueness. */
+  sku: z.string().min(1).max(48).optional(),
   name: z.string().min(2).max(255),
   category: z.string().min(1).max(128),
   unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
@@ -149,6 +150,18 @@ export const createListingRequestSchema = z.object({
 });
 
 export type CreateListingRequest = z.infer<typeof createListingRequestSchema>;
+
+export const updateListingRequestSchema = z.object({
+  name: z.string().min(2).max(255).optional(),
+  category: z.string().min(1).max(128).optional(),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  patronagePerUnit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  /** New SKU prefix — server assigns a fresh timestamp suffix. */
+  skuBase: z.string().min(1).max(48).optional(),
+  submitForReview: z.boolean().optional(),
+});
+
+export type UpdateListingRequest = z.infer<typeof updateListingRequestSchema>;
 
 export const merchantListingSchema = z.object({
   vendorCode: z.string(),

@@ -29,7 +29,15 @@ const categories = [
     <div id="wizard-step-1" class="flex flex-col gap-4">
       <p class="text-body-sm text-neutral-500 m-0">What are you listing? (Product only for MVP)</p>
       <Input id="listing-name" name="name" type="text" label="Product name" required placeholder="Organic brown rice 5kg" />
-      <Input id="listing-sku" name="sku" type="text" label="SKU" required hint="Unique code for your catalog, e.g. RICE-5KG" />
+      <Input
+        id="listing-sku-prefix"
+        name="skuPrefix"
+        type="text"
+        label="SKU prefix (optional)"
+        placeholder="RICE-5KG"
+        hint="Leave blank to derive from the product name. A UTC timestamp is added on save, e.g. RICE-5KG-20260722100530"
+      />
+      <p id="listing-sku-preview" class="text-caption text-neutral-500 m-0 font-mono" aria-live="polite" />
       <Select
         id="listing-category"
         name="category"

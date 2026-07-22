@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
-import { createListingRequestSchema, updateMerchantProfileSchema } from "@b2ccoop/store-shared";
+import { createListingRequestSchema, updateMerchantProfileSchema, updateListingRequestSchema } from "@b2ccoop/store-shared";
 import { createDb } from "../db/client";
 import { orders } from "../db/schema";
 import { getVendorCode, requireMerchantVendor } from "../middleware/merchant-scope";
@@ -8,8 +8,10 @@ import { getMerchantVendorCode as getAuthVendorCode, merchantAuth } from "../mid
 import { getVendorByCode } from "../services/vendors";
 import {
   createMerchantListing,
+  deleteMerchantListing,
   listMerchantListings,
   MerchantListingError,
+  updateMerchantListing,
 } from "../services/merchant-listings";
 import { ProductImageError, uploadProductImage } from "../services/product-image";
 import {
@@ -144,6 +146,72 @@ export async function postMerchantListing(c: MerchantContext) {
       ...parsed.data,
     });
     return c.json({ ok: true, listing }, 201);
+  } catch (err) {
+    if (err instanceof MerchantListingError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function patchMerchantListing(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const sku = c.req.param("sku");
+  if (!sku?.trim()) {
+    return c.json({ error: "SKU required" }, 400);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = updateListingRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+  }
+
+  if (Object.keys(parsed.data).length === 0) {
+    return c.json({ error: "No fields to update" }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const listing = await updateMerchantListing(db, c.env, {
+      vendorCode,
+      sku,
+      ...parsed.data,
+    });
+    return c.json({ ok: true, listing });
+  } catch (err) {
+    if (err instanceof MerchantListingError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
+  } finally {
+    await close();
+  }
+}
+
+export async function deleteMerchantListingRoute(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const sku = c.req.param("sku");
+  if (!sku?.trim()) {
+    return c.json({ error: "SKU required" }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const result = await deleteMerchantListing(db, vendorCode, sku);
+    return c.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof MerchantListingError) {
       return c.json({ error: err.message }, err.status);

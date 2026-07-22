@@ -86,3 +86,43 @@ export async function uploadProductImage(
 
   return { imageUrl };
 }
+
+/** Copy listing photo to a new R2 key when the SKU changes. */
+export async function migrateProductImageForSkuChange(
+  env: WorkerEnv,
+  vendorCode: string,
+  oldSku: string,
+  newSku: string,
+  imageUrl: string,
+): Promise<string | null> {
+  const base = resolvePublicImagesBaseUrl(env);
+  if (!base || !env.PRODUCT_IMAGES) {
+    return imageUrl;
+  }
+
+  const prefix = `${base.replace(/\/$/, "")}/products/${pathSegment(vendorCode)}/`;
+  if (!imageUrl.startsWith(prefix)) {
+    return imageUrl;
+  }
+
+  const fileName = imageUrl.slice(prefix.length);
+  const extMatch = fileName.match(/^([A-Z0-9-]+)\.(\w+)$/);
+  if (!extMatch) {
+    return null;
+  }
+
+  const ext = extMatch[2]!;
+  const oldKey = `products/${pathSegment(vendorCode)}/${pathSegment(oldSku)}.${ext}`;
+  const newKey = `products/${pathSegment(vendorCode)}/${pathSegment(newSku)}.${ext}`;
+
+  const object = await env.PRODUCT_IMAGES.get(oldKey);
+  if (!object) {
+    return null;
+  }
+
+  await env.PRODUCT_IMAGES.put(newKey, object.body, {
+    httpMetadata: object.httpMetadata,
+  });
+
+  return `${base.replace(/\/$/, "")}/${newKey}`;
+}
