@@ -12,7 +12,7 @@ const ORDER_LABELS: Record<OrderStatus, string> = {
 
 const PAYMENT_METHOD_LABELS = {
   pickup: "Pay on delivery / pickup",
-  online: "Pay online (PayMongo)",
+  online: "Pay online (QR Ph)",
 } as const;
 
 const FULFILLMENT_LABELS: Record<FulfillmentStatus, string> = {
@@ -42,7 +42,7 @@ export function orderStatusBadgeLabel(order: OrderDetail): string {
 
 export function orderReceiptMessage(order: OrderDetail): string {
   if (order.status === "PENDING_PAYMENT") {
-    return "Complete payment on PayMongo to confirm your order. GCash, Maya, QR Ph, and cards are accepted.";
+    return "Complete payment by scanning the QR Ph code on PayMongo. GCash, Maya, and bank apps can scan QR Ph.";
   }
   if (order.status === "PENDING_DELIVERY") {
     return order.paidOnline

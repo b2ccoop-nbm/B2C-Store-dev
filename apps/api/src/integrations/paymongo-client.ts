@@ -1,5 +1,8 @@
 import type { WorkerEnv } from "../env";
 
+/** PayMongo checkout — QR Ph only (GCash/Maya pay by scanning the QR Ph code). */
+export const PAYMONGO_PAYMENT_METHOD_TYPES = ["qrph"] as const;
+
 export type PaymongoCheckoutLine = {
   name: string;
   amountCentavos: number;
@@ -47,7 +50,7 @@ export async function createPaymongoCheckoutSession(
           currency: "PHP",
           quantity: item.quantity,
         })),
-        payment_method_types: ["card", "gcash", "grab_pay", "paymaya", "qrph"],
+        payment_method_types: [...PAYMONGO_PAYMENT_METHOD_TYPES],
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         reference_number: input.referenceNumber,

@@ -37,7 +37,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
   function submitLabel(): string {
     if (paymentMethod === "online") {
-      return "Continue to PayMongo — GCash / QR Ph / card";
+      return "Continue to pay with QR Ph";
     }
     return fulfillmentMode === "delivery"
       ? "Place order — pay on delivery"
@@ -46,7 +46,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
   function paymentHint(): string {
     if (paymentMethod === "online") {
-      return "You’ll pay now on PayMongo’s secure page (GCash, Maya, QR Ph, cards).";
+      return "You’ll scan a QR Ph code on PayMongo — GCash, Maya, and bank apps can scan it.";
     }
     return fulfillmentMode === "delivery"
       ? "Pay when your order is delivered."
@@ -313,7 +313,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
     if (checkoutSubmit instanceof HTMLButtonElement) {
       checkoutSubmit.disabled = true;
-      checkoutSubmit.textContent = paymentMethod === "online" ? "Opening PayMongo…" : "Placing order…";
+      checkoutSubmit.textContent = paymentMethod === "online" ? "Opening QR Ph checkout…" : "Placing order…";
     }
     try {
       const res = await fetch(`${apiBase}/checkout`, {

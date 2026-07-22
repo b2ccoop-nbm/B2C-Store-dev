@@ -9,7 +9,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 <MarketplaceLayout title="Cart">
   <header class="mb-6">
     <h1 class="text-display m-0">Your cart</h1>
-    <p class="text-body-sm text-neutral-500 mt-1 m-0">Choose delivery or pickup, then pay on delivery or online via PayMongo (GCash, QR Ph, cards).</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">Choose delivery or pickup, then pay on delivery or online via QR Ph (scan with GCash, Maya, or your bank app).</p>
   </header>
 
   <div id="cart-root" aria-live="polite">
@@ -42,7 +42,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
         </label>
         <label class="flex items-start gap-3 text-body-sm cursor-pointer">
           <input type="radio" name="paymentMethod" value="online" class="mt-1" />
-          <span><strong>Pay online now</strong> — GCash, Maya, QR Ph, or card via PayMongo</span>
+          <span><strong>Pay online now</strong> — QR Ph on PayMongo (scan with GCash, Maya, or bank app)</span>
         </label>
       </fieldset>
 
