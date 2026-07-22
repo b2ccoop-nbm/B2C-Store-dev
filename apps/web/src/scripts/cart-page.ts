@@ -18,6 +18,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
   const pickupSummary = document.getElementById("pickup-summary");
 
   let quote: QuoteState = null;
+  let quoteError: string | null = null;
   let fulfillmentMode: FulfillmentMode = "delivery";
   let paymentMethod: PaymentMethod = "pickup";
   let onlinePaymentEnabled = false;
@@ -53,6 +54,29 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       : "Pay when you pick up from the seller.";
   }
 
+  function cartVendorIssue(cart: ReturnType<typeof readCart>): string | null {
+    const vendors = new Set(cart.map((line) => line.vendorCode).filter(Boolean));
+    if (vendors.size > 1) {
+      return "Checkout supports one seller per order. Remove items from other stores, or split into separate orders.";
+    }
+    if (cart.some((line) => !line.vendorCode)) {
+      return "Some cart items are outdated. Remove them and add products again from the catalog.";
+    }
+    return null;
+  }
+
+  function showCheckoutError(message: string): void {
+    if (checkoutError) {
+      checkoutError.textContent = message;
+      checkoutError.classList.remove("hidden");
+    }
+  }
+
+  function syncSubmitDisabled(): void {
+    if (!(checkoutSubmit instanceof HTMLButtonElement)) return;
+    checkoutSubmit.disabled = Boolean(quoteLoading || quoteError || !quote);
+  }
+
   function updateCheckoutControls(): void {
     const isDelivery = fulfillmentMode === "delivery";
     deliveryFields?.classList.toggle("hidden", !isDelivery);
@@ -61,12 +85,28 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       checkoutSubmit.textContent = submitLabel();
     }
     renderTotals();
+    syncSubmitDisabled();
   }
 
   function renderTotals(): void {
     const totals = document.getElementById("cart-totals");
-    if (!totals || !quote) return;
-    const patronage = patronageTotal(readCart());
+    if (!totals) return;
+    const cart = readCart();
+    const vendorWarning = cartVendorIssue(cart);
+    if (vendorWarning || quoteError || quoteLoading || !quote) {
+      totals.innerHTML = `
+        ${quoteLoading ? "<p class=\"text-body-sm text-neutral-500 m-0\">Calculating delivery…</p>" : ""}
+        ${
+          vendorWarning || quoteError
+            ? `<p class="text-body-sm text-danger-600 m-0" role="alert">${vendorWarning ?? quoteError}</p>`
+            : !quoteLoading
+              ? "<p class=\"text-body-sm text-neutral-500 m-0\">Could not calculate totals.</p>"
+              : ""
+        }`;
+      syncSubmitDisabled();
+      return;
+    }
+    const patronage = patronageTotal(cart);
     const deliveryLine =
       fulfillmentMode === "delivery"
         ? `<p class="text-body-sm m-0 flex justify-between"><span>Delivery</span><span>${formatPhp(Number(quote.deliveryFee))}${quote.deliveryCapApplied ? " <span class=\"text-caption text-neutral-500\">(capped)</span>" : ""}</span></p>`
@@ -81,6 +121,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       }
       <p class="text-title-sm m-0 flex justify-between pt-2 border-t border-neutral-200"><span>Total</span><span>${formatPhp(selectedTotal())}</span></p>
       <p class="text-caption text-neutral-500 m-0">${paymentHint()}</p>`;
+    syncSubmitDisabled();
   }
 
   function renderPickupSummary(): void {
@@ -149,9 +190,23 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
     const cart = readCart();
     if (!cart.length) {
       quote = null;
+      quoteError = null;
       return;
     }
+
+    const vendorIssue = cartVendorIssue(cart);
+    if (vendorIssue) {
+      quote = null;
+      quoteError = vendorIssue;
+      showCheckoutError(vendorIssue);
+      syncSubmitDisabled();
+      return;
+    }
+
     quoteLoading = true;
+    quoteError = null;
+    checkoutError?.classList.add("hidden");
+    syncSubmitDisabled();
     try {
       const res = await fetch(`${apiBase}/checkout/quote`, {
         method: "POST",
@@ -163,18 +218,18 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not calculate delivery");
       quote = data as CheckoutQuoteResponse;
+      quoteError = null;
       if (!quote.pickupAvailable && fulfillmentMode === "merchant_pickup") {
         fulfillmentMode = "delivery";
       }
     } catch (err) {
       quote = null;
-      if (checkoutError) {
-        checkoutError.textContent = err instanceof Error ? err.message : "Could not load checkout quote";
-        checkoutError.classList.remove("hidden");
-      }
+      quoteError = err instanceof Error ? err.message : "Could not load checkout quote";
+      showCheckoutError(quoteError);
     } finally {
       quoteLoading = false;
       bindFulfillmentOptions();
+      renderTotals();
     }
   }
 
@@ -210,6 +265,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
           <li class="py-4 flex flex-wrap items-center justify-between gap-4" data-sku="${line.sku}">
             <div class="min-w-0 flex-1">
               <p class="font-semibold m-0 truncate">${line.name}</p>
+              ${line.vendorCode ? `<p class="text-caption text-neutral-500 m-0">${line.vendorCode}</p>` : ""}
               <p class="text-body-sm text-coop-600 m-0">${formatPhp(Number(line.patronagePerUnit))} patronage each</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -263,12 +319,13 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
     e.preventDefault();
     checkoutError?.classList.add("hidden");
     if (!(checkoutForm instanceof HTMLFormElement)) return;
+
     if (!quote) {
-      if (checkoutError) {
-        checkoutError.textContent = "Delivery quote not ready — try again in a moment.";
-        checkoutError.classList.remove("hidden");
+      await loadQuote();
+      if (!quote) {
+        showCheckoutError(quoteError ?? "Delivery quote not ready — fix cart issues above and try again.");
+        return;
       }
-      return;
     }
 
     const fd = new FormData(checkoutForm);
