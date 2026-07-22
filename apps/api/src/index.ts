@@ -59,6 +59,7 @@ import { postOrderPay } from "./routes/order-pay";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { getProductMedia } from "./routes/product-media";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
+import { paymongoConfigured } from "./integrations/paymongo-client";
 import type { MerchantVariables } from "./middleware/vendor-auth";
 import type { StoreAdminVariables } from "./middleware/store-admin-auth";
 
@@ -201,6 +202,18 @@ admin.patch("/vendors/:code/rotate-token", (c) => patchRotateVendorToken(c));
 app.route("/admin", admin);
 
 app.get("/dev/fixtures", (c) => getDevFixtures(c));
+app.get("/paymongo", (c) =>
+  c.json(
+    {
+      error: "This path is not used for customer checkout.",
+      webhook: "POST /webhooks/paymongo",
+      resumePayment: "POST /orders/:id/pay",
+      checkout: "POST /checkout with paymentMethod online — returns a PayMongo hosted checkout URL",
+      onlinePaymentEnabled: paymongoConfigured(c.env),
+    },
+    404,
+  ),
+);
 app.post("/webhooks/paymongo", (c) => postPaymongoWebhook(c));
 
 export default app;
