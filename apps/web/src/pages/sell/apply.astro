@@ -25,7 +25,16 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
   <Card class="max-w-xl mb-8">
     <h2 class="text-title m-0 mb-4">New application</h2>
     <form id="seller-application-form" class="flex flex-col gap-4">
-      <Input id="applicantEmail" name="applicantEmail" type="email" label="Business email" required autocomplete="email" />
+      <Input
+        id="applicantEmail"
+        name="applicantEmail"
+        type="email"
+        label="Business email"
+        required
+        autocomplete="email"
+        hint="Use the same email you sign in with on Your profile — required for seller access without an access token."
+      />
+      <div id="application-email-signin-banner" class="hidden rounded-lg border px-4 py-3" role="status" aria-live="polite" />
       <Input id="businessName" name="businessName" type="text" label="Business name" required />
       <Select
         id="businessType"
@@ -72,11 +81,22 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     </Card>
   </div>
 
+  <div id="merchant-sso-card" class="hidden">
+    <Card class="max-w-xl mb-8">
+      <h2 class="text-title m-0 mb-4">Seller access</h2>
+      <p class="text-body-sm text-neutral-500 m-0 mb-2">
+        Approved merchants use the same member sign-in as shoppers. Switch to <strong>Merchant</strong> in the header to manage your store.
+      </p>
+      <p id="merchant-sso-msg" class="hidden text-body-sm mt-2 m-0" role="status" />
+      <Button href="/profile" variant="primary" class="mt-4">Sign in on Your profile</Button>
+    </Card>
+  </div>
+
   <div id="merchant-credentials-card" class="hidden">
     <Card class="max-w-xl">
-      <h2 class="text-title m-0 mb-4">Store credentials</h2>
+      <h2 class="text-title m-0 mb-4">Access token (optional fallback)</h2>
       <p class="text-body-sm text-neutral-500 m-0 mb-4">
-        After HQ approves your application, enter the access token they provide. This is unique to your store — not a coop staff password.
+        Most sellers only need member sign-in. HQ may provide a token for recovery or non-Google accounts.
       </p>
       <Input id="merchant-email" name="merchantEmail" type="email" label="Contact email" autocomplete="email" />
       <Input

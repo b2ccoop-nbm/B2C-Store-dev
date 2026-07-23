@@ -39,7 +39,8 @@ export function setupMerchantDashboard(apiBase = API_BASE): void {
         if (ctx.application?.status === "PENDING") {
           message = "Your application is under review. Listings and orders unlock after HQ approval.";
         } else if (ctx.application?.status === "APPROVED" && !ctx.canSell) {
-          message = "Application approved — save your access token on the Apply page to unlock seller tools.";
+          message =
+            "Application approved — sign in on Your profile with the same email you used to apply, then switch to Merchant.";
         }
         gateMsg.textContent = message;
         gateMsg.classList.remove("hidden");

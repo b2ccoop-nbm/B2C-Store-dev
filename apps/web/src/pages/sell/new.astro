@@ -4,6 +4,7 @@ import Button from "@/components/atoms/Button.astro";
 import Card from "@/components/atoms/Card.astro";
 import Input from "@/components/atoms/Input.astro";
 import Select from "@/components/atoms/Select.astro";
+import Textarea from "@/components/atoms/Textarea.astro";
 
 const categories = [
   "Groceries",
@@ -22,7 +23,7 @@ const categories = [
       <h1 class="text-display m-0">Listing wizard</h1>
       <p id="wizard-step-label" class="text-body-sm text-neutral-500 mt-2 m-0">Step 1 of 2</p>
     </div>
-    <Button href="/sell/apply" variant="ghost" size="sm">Set merchant credentials</Button>
+    <Button href="/profile" variant="ghost" size="sm">Member sign-in</Button>
   </header>
 
   <Card class="max-w-xl" id="listing-wizard-panel">
@@ -91,17 +92,58 @@ const categories = [
         <span>Eligible for member patronage on coop revenue capture</span>
       </label>
       <div id="listing-split-preview" aria-live="polite" />
+
+      <Textarea
+        id="listing-short-description"
+        name="shortDescription"
+        label="Short description"
+        rows={4}
+        hint="Shown on the product page when shoppers open this item."
+      />
+      <Textarea
+        id="listing-highlights"
+        name="highlights"
+        label="Highlights"
+        rows={4}
+        hint="One highlight per line — e.g. refillable container, lemon scent."
+      />
+      <Textarea
+        id="listing-features"
+        name="features"
+        label="Features"
+        rows={4}
+        hint="One feature per line — e.g. phosphate-free, 2L volume."
+      />
+      <p id="listing-copy-word-count" class="text-caption text-neutral-500 m-0" aria-live="polite" />
+
       <div>
-        <label for="listing-image" class="block text-body-sm font-semibold text-neutral-800 mb-2">Product photo</label>
-        <input
-          id="listing-image"
-          name="image"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="block w-full text-body-sm text-neutral-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:font-semibold file:text-brand-700"
-        />
-        <p class="text-caption text-neutral-500 m-0 mt-2">Optional. JPEG, PNG, or WebP — max 2 MB. Shown on the marketplace after HQ approves the listing.</p>
-        <img id="listing-image-preview" alt="" class="hidden mt-3 max-h-48 w-auto rounded-xl border border-neutral-200 object-contain" />
+        <p class="text-body-sm font-semibold text-neutral-800 mb-2 m-0">Product photos (up to 4)</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {
+            [0, 1, 2, 3].map((slot) => (
+              <div class="rounded-lg border border-neutral-200 p-3">
+                <label for={`listing-image-${slot}`} class="block text-caption font-semibold text-neutral-700 mb-2">
+                  Photo {slot + 1}{slot === 0 ? " (cover)" : ""}
+                </label>
+                <input
+                  id={`listing-image-${slot}`}
+                  name={`image-${slot}`}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  class="block w-full text-caption text-neutral-700 file:mr-2 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:font-semibold file:text-brand-700"
+                  data-listing-image-input={slot}
+                />
+                <img
+                  id={`listing-image-preview-${slot}`}
+                  alt=""
+                  class="hidden mt-2 max-h-28 w-full rounded-lg border border-neutral-200 object-contain"
+                  data-listing-image-preview={slot}
+                />
+              </div>
+            ))
+          }
+        </div>
+        <p class="text-caption text-neutral-500 m-0 mt-2">JPEG, PNG, or WebP — max 2 MB each. Photo 1 is the catalog cover.</p>
       </div>
     </div>
 

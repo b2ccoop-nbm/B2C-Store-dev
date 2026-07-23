@@ -39,6 +39,7 @@ import {
   patchMerchantProfileRoute,
   postMerchantListing,
   postMerchantListingImage,
+  deleteMerchantListingImage,
   deleteMerchantListingRoute,
 } from "./routes/merchant";
 import { getCatalog } from "./routes/catalog";
@@ -56,6 +57,7 @@ import { getDevFixtures } from "./routes/dev-fixtures";
 import { getMemberStorePatronage, getOrdersByEmail } from "./routes/member-activity";
 import { getOrder } from "./routes/orders";
 import { postOrderPay } from "./routes/order-pay";
+import { postOrderSyncPayment } from "./routes/order-sync-payment";
 import { postPaymongoWebhook } from "./routes/webhooks-paymongo";
 import { getProductMedia } from "./routes/product-media";
 import { corsMiddleware, securityHeaders } from "./middleware/security";
@@ -155,6 +157,7 @@ app.post("/checkout/quote", (c) => postCheckoutQuote(c));
 app.get("/orders", (c) => getOrdersByEmail(c));
 app.get("/orders/:id", (c) => getOrder(c));
 app.post("/orders/:id/pay", (c) => postOrderPay(c));
+app.post("/orders/:id/sync-payment", (c) => postOrderSyncPayment(c));
 app.get("/members/store-patronage", (c) => getMemberStorePatronage(c));
 app.get("/members/merchant-context", (c) => getMemberMerchantContext(c));
 
@@ -174,6 +177,7 @@ merchant.post("/listings", (c) => postMerchantListing(c));
 merchant.patch("/listings/:sku", (c) => patchMerchantListing(c));
 merchant.delete("/listings/:sku", (c) => deleteMerchantListingRoute(c));
 merchant.post("/listings/:sku/image", (c) => postMerchantListingImage(c));
+merchant.delete("/listings/:sku/images/:slot", (c) => deleteMerchantListingImage(c));
 merchant.get("/orders/pending", (c) => getMerchantPendingOrders(c));
 merchant.patch("/orders/:id/fulfillment", (c) => patchMerchantFulfillment(c));
 merchant.patch("/orders/:id/confirm-pickup", (c) => patchMerchantConfirmPickup(c));

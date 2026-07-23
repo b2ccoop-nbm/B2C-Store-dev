@@ -3,7 +3,7 @@ import type { Context } from "hono";
 import { createDb } from "../db/client";
 import { products, vendors } from "../db/schema";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
-import { resolvePublicImageUrl } from "../lib/product-image-url";
+import { serializeCatalogItem } from "../lib/catalog-item";
 
 export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
   const dbUrl = resolveDatabaseUrl(c.env);
@@ -24,27 +24,21 @@ export async function getCatalog(c: Context<{ Bindings: WorkerEnv }>) {
         patronagePerUnit: products.patronagePerUnit,
         currency: products.currency,
         imageUrl: products.imageUrl,
+        imageUrls: products.imageUrls,
+        shortDescription: products.shortDescription,
+        highlights: products.highlights,
+        features: products.features,
       })
       .from(products)
       .innerJoin(vendors, eq(products.vendorId, vendors.id))
       .where(and(eq(products.isActive, true), eq(products.listingStatus, "ACTIVE")));
 
     const items = rows
-      .map((row) => ({
-        vendorCode: row.vendorCode,
-        vendorSlug: row.vendorSlug,
-        sku: row.sku,
-        name: row.name,
-        category: row.category,
-        unitPrice: row.unitPrice,
-        patronagePerUnit: row.patronagePerUnit,
-        currency: row.currency,
-        imageUrl: resolvePublicImageUrl(c.env, row.imageUrl),
-      }))
+      .map((row) => serializeCatalogItem(c.env, row))
       .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 
     return c.json({
-      storeMode: "native_dev",
+      storeMode: c.env.ENVIRONMENT === "production" ? "production" : "native_dev",
       currency: "PHP",
       itemCount: items.length,
       items,

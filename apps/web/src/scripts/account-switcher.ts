@@ -5,8 +5,7 @@ import {
   getMerchantEmail,
   getMerchantToken,
   getMerchantVendorCode,
-  hasMerchantSession,
-  validateMerchantToken,
+  validateMerchantSession,
 } from "@/lib/merchant-session";
 import { fetchStoreAdminSession } from "@/lib/store-admin";
 import { $persona, getPersonaLabel, type Persona } from "@/stores/persona";
@@ -53,13 +52,15 @@ async function loadAccountSnapshot(apiBase: string): Promise<AccountSnapshot> {
   let applicationStatus: string | null = null;
   let adminLabel: string | null = null;
 
-  if (hasMerchantSession()) {
+  if (memberEmail || getMerchantToken()) {
     try {
-      const vendor = await validateMerchantToken(apiBase, getMerchantToken());
+      const vendor = await validateMerchantSession(apiBase);
       merchantStore = vendor.name;
       merchantCode = vendor.code;
     } catch {
-      merchantStore = merchantCode;
+      if (merchantCode) {
+        merchantStore = merchantCode;
+      }
     }
   }
 
@@ -97,7 +98,9 @@ async function loadAccountSnapshot(apiBase: string): Promise<AccountSnapshot> {
       subtitle = "Application under review";
     } else if (effectiveEmail) {
       detail = effectiveEmail;
-      subtitle = hasMerchantSession() ? "Store credentials saved" : "Save credentials at Apply to sell";
+      subtitle = memberEmail
+        ? "Signed in — seller tools ready"
+        : "Sign in on Your profile for seller tools";
     } else {
       detail = "Seller area";
       subtitle = "Apply or save store credentials";

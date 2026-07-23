@@ -7,12 +7,15 @@ import {
   normalizeListingSkuBase,
   type DeliveryTier,
   type PlatformCommerceSettings,
+  totalProductCopyWords,
+  productCopyWordLimitError,
 } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
 import { products, vendors } from "../db/schema";
 import type { WorkerEnv } from "../env";
 import { resolvePublicImageUrl } from "../lib/product-image-url";
-import { migrateProductImageForSkuChange } from "./product-image";
+import { galleryFromRow } from "./product-image";
+import { migrateProductGalleryForSkuChange } from "./product-image";
 import { getPlatformSettings } from "./platform-settings";
 
 export class MerchantListingError extends Error {
@@ -36,6 +39,9 @@ export type CreateListingInput = {
   deliveryPerItem?: string;
   patronageEligible?: boolean;
   submitForReview?: boolean;
+  shortDescription?: string | null;
+  highlights?: string | null;
+  features?: string | null;
 };
 
 export type UpdateListingInput = {
@@ -50,6 +56,9 @@ export type UpdateListingInput = {
   patronageEligible?: boolean;
   skuBase?: string;
   submitForReview?: boolean;
+  shortDescription?: string | null;
+  highlights?: string | null;
+  features?: string | null;
 };
 
 export type AdminApproveListingInput = {
@@ -57,6 +66,23 @@ export type AdminApproveListingInput = {
   deliveryPerItem?: string | null;
   deliveryTier?: DeliveryTier;
 };
+
+function optionalCopy(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function assertCopyWordLimit(parts: {
+  shortDescription?: string | null;
+  highlights?: string | null;
+  features?: string | null;
+}) {
+  const total = totalProductCopyWords(parts);
+  if (total > 500) {
+    throw new MerchantListingError(productCopyWordLimitError(total));
+  }
+}
 
 function money(value: string): string {
   const n = Number(value);
@@ -222,6 +248,10 @@ export async function createMerchantListing(db: StoreDatabase, input: CreateList
   const deliveryPerItem = optionalMoney(input.deliveryPerItem);
   const deliveryTier = input.deliveryTier ?? "standard";
   const patronageEligible = input.patronageEligible ?? true;
+  const shortDescription = optionalCopy(input.shortDescription);
+  const highlights = optionalCopy(input.highlights);
+  const features = optionalCopy(input.features);
+  assertCopyWordLimit({ shortDescription, highlights, features });
 
   const { pricing, effectiveDelivery } = await computeProductPricing(db, vendor, unitPrice, {
     listingFeePercent,
@@ -248,6 +278,9 @@ export async function createMerchantListing(db: StoreDatabase, input: CreateList
       deliveryPerItem,
       deliveryTier,
       patronageEligible,
+      shortDescription,
+      highlights,
+      features,
       listingStatus,
       isActive,
     })
@@ -298,6 +331,22 @@ export async function updateMerchantListing(
     patch.listingFeePercent = optionalPercent(input.listingFeePercent);
   }
 
+  if (
+    input.shortDescription !== undefined ||
+    input.highlights !== undefined ||
+    input.features !== undefined
+  ) {
+    const shortDescription =
+      input.shortDescription !== undefined ? optionalCopy(input.shortDescription) : product.shortDescription;
+    const highlights =
+      input.highlights !== undefined ? optionalCopy(input.highlights) : product.highlights;
+    const features = input.features !== undefined ? optionalCopy(input.features) : product.features;
+    assertCopyWordLimit({ shortDescription, highlights, features });
+    patch.shortDescription = shortDescription;
+    patch.highlights = highlights;
+    patch.features = features;
+  }
+
   const repricingNeeded =
     input.unitPrice !== undefined ||
     input.listingFeePercent !== undefined ||
@@ -336,14 +385,17 @@ export async function updateMerchantListing(
       nextSku = await assignUniqueSku(db, vendor.id, newBase);
       patch.sku = nextSku;
 
-      if (product.imageUrl) {
-        patch.imageUrl = await migrateProductImageForSkuChange(
+      const gallery = galleryFromRow(product);
+      if (gallery.length > 0) {
+        const migrated = await migrateProductGalleryForSkuChange(
           env,
           vendor.code,
           product.sku,
           nextSku,
-          product.imageUrl,
+          gallery,
         );
+        patch.imageUrls = migrated;
+        patch.imageUrl = migrated[0] ?? null;
       }
     }
   }
@@ -466,6 +518,12 @@ function serializeListing(
   env?: WorkerEnv,
 ) {
   const tier = row.deliveryTier as DeliveryTier;
+  const gallery = galleryFromRow(row);
+  const resolvedGallery = env
+    ? gallery.map((url) => resolvePublicImageUrl(env, url) ?? url).filter(Boolean)
+    : gallery;
+  const primaryImage = resolvedGallery[0] ?? (env ? resolvePublicImageUrl(env, row.imageUrl) : row.imageUrl ?? null);
+
   return {
     vendorCode: vendor.code,
     sku: row.sku,
@@ -486,7 +544,11 @@ function serializeListing(
     ),
     patronageEligible: row.patronageEligible,
     currency: row.currency,
-    imageUrl: env ? resolvePublicImageUrl(env, row.imageUrl) : row.imageUrl ?? null,
+    imageUrl: primaryImage,
+    imageUrls: resolvedGallery,
+    shortDescription: row.shortDescription ?? null,
+    highlights: row.highlights ?? null,
+    features: row.features ?? null,
     listingStatus: row.listingStatus,
     isActive: row.isActive,
     updatedAt: row.updatedAt.toISOString(),

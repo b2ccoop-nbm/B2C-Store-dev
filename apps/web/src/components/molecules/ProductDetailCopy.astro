@@ -1,0 +1,54 @@
+---
+import { parseProductBulletLines } from "@b2ccoop/store-shared";
+
+interface Props {
+  shortDescription?: string | null;
+  highlights?: string | null;
+  features?: string | null;
+}
+
+const { shortDescription, highlights, features } = Astro.props;
+const highlightLines = parseProductBulletLines(highlights);
+const featureLines = parseProductBulletLines(features);
+const hasCopy =
+  Boolean(shortDescription?.trim()) || highlightLines.length > 0 || featureLines.length > 0;
+---
+
+{
+  hasCopy && (
+    <section class="mt-8 space-y-6" aria-label="Product details">
+      {
+        shortDescription?.trim() && (
+          <div>
+            <h2 class="text-title-sm m-0 mb-2">About this product</h2>
+            <p class="text-body text-neutral-700 m-0 whitespace-pre-line">{shortDescription.trim()}</p>
+          </div>
+        )
+      }
+      {
+        highlightLines.length > 0 && (
+          <div>
+            <h2 class="text-title-sm m-0 mb-2">Highlights</h2>
+            <ul class="list-disc pl-5 m-0 space-y-1 text-body text-neutral-700">
+              {highlightLines.map((line) => (
+                <li>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      {
+        featureLines.length > 0 && (
+          <div>
+            <h2 class="text-title-sm m-0 mb-2">Features</h2>
+            <ul class="list-disc pl-5 m-0 space-y-1 text-body text-neutral-700">
+              {featureLines.map((line) => (
+                <li>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </section>
+  )
+}

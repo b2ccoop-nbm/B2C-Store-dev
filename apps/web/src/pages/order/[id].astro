@@ -75,7 +75,8 @@ function formatAddress(order: OrderDetail): string {
             <Card class="mb-6 border-brand-200 bg-brand-50" id="order-pending-payment">
               <h2 class="text-title-sm m-0 mb-2">Complete your payment</h2>
               <p class="text-body-sm text-neutral-600 m-0 mb-4">
-                Scan the QR Ph code on PayMongo. GCash, Maya, and participating bank apps can pay via QR Ph.
+                On PayMongo, choose <strong>GCash</strong> or <strong>Maya</strong> to open your wallet, or <strong>QR Ph</strong> to scan.
+                Wait until the QR is fully loaded before scanning.
               </p>
               {
                 paidReturn && (
@@ -85,7 +86,7 @@ function formatAddress(order: OrderDetail): string {
                 )
               }
               <Button type="button" variant="primary" id="order-pay-btn">
-                Pay {formatPhp(order.totalAmount)} with QR Ph
+                Pay {formatPhp(order.totalAmount)} online
               </Button>
               <p id="order-pay-msg" class="hidden text-body-sm mt-3 m-0" role="status" />
             </Card>

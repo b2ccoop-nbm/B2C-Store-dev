@@ -2,7 +2,11 @@ import type { Context } from "hono";
 import { createDb } from "../db/client";
 import { verifyPaymongoWebhookSignature } from "../integrations/paymongo-client";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
-import { fulfillOnlinePayment, OrderError } from "../services/orders";
+import {
+  fulfillOnlinePayment,
+  OrderError,
+  resolveOrderForPaymongoWebhook,
+} from "../services/orders";
 
 type PaymongoWebhookPayload = {
   data?: {
@@ -12,6 +16,7 @@ type PaymongoWebhookPayload = {
       type?: string;
       data?: {
         id?: string;
+        type?: string;
         attributes?: {
           reference_number?: string;
         };
@@ -19,6 +24,28 @@ type PaymongoWebhookPayload = {
     };
   };
 };
+
+const PAID_EVENT_TYPES = new Set([
+  "checkout_session.payment.paid",
+  "checkout_session.completed",
+]);
+
+function parsePaymongoWebhook(payload: PaymongoWebhookPayload) {
+  const eventType = payload.data?.attributes?.type ?? payload.data?.type ?? "";
+  const inner = payload.data?.attributes?.data;
+  const reference = inner?.attributes?.reference_number?.trim() ?? "";
+  const innerType = inner?.type ?? "";
+  const sessionId =
+    innerType === "checkout_session" || inner?.id?.startsWith("cs_")
+      ? inner?.id?.trim() ?? ""
+      : "";
+  return {
+    eventType,
+    reference,
+    sessionId,
+    eventId: payload.data?.id,
+  };
+}
 
 export async function postPaymongoWebhook(c: Context<{ Bindings: WorkerEnv }>) {
   const secret = c.env.PAYMONGO_WEBHOOK_SECRET?.trim();
@@ -42,16 +69,9 @@ export async function postPaymongoWebhook(c: Context<{ Bindings: WorkerEnv }>) {
     return c.json({ error: "Invalid JSON" }, 400);
   }
 
-  const eventType =
-    payload.data?.attributes?.type ?? payload.data?.type ?? "";
-  if (eventType !== "checkout_session.payment.paid") {
+  const { eventType, reference, sessionId, eventId } = parsePaymongoWebhook(payload);
+  if (!PAID_EVENT_TYPES.has(eventType)) {
     return c.json({ received: true, ignored: eventType || "unknown" });
-  }
-
-  const reference =
-    payload.data?.attributes?.data?.attributes?.reference_number?.trim() ?? "";
-  if (!reference) {
-    return c.json({ error: "Missing reference_number" }, 400);
   }
 
   const dbUrl = resolveDatabaseUrl(c.env);
@@ -61,12 +81,12 @@ export async function postPaymongoWebhook(c: Context<{ Bindings: WorkerEnv }>) {
 
   const { db, close } = createDb(dbUrl);
   try {
-    const result = await fulfillOnlinePayment(
-      db,
-      c.env,
-      reference,
-      payload.data?.id,
-    );
+    const order = await resolveOrderForPaymongoWebhook(db, { reference, sessionId });
+    if (!order) {
+      return c.json({ error: "Order not found for PayMongo webhook" }, 404);
+    }
+
+    const result = await fulfillOnlinePayment(db, c.env, order.externalId, eventId);
     return c.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof OrderError) {

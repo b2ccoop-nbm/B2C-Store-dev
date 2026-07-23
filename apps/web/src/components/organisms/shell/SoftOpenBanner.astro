@@ -1,0 +1,19 @@
+---
+/** Site-wide soft-open notice — set PUBLIC_SOFT_OPEN_BANNER=true in production build env. */
+const enabled = import.meta.env.PUBLIC_SOFT_OPEN_BANNER === "true";
+---
+
+{
+  enabled && (
+    <div
+      class="border-b border-brand-200 bg-brand-50 px-4 py-2 text-center text-body-sm text-neutral-800"
+      role="status"
+    >
+      <span class="font-semibold text-brand-700">Soft open</span>
+      <span class="text-neutral-600">
+        {" "}
+        — B2C Coop Store is live with select merchants. Pay online via GCash, Maya, QR Ph, or pay on delivery.
+      </span>
+    </div>
+  )
+}

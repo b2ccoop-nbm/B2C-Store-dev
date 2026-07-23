@@ -11,6 +11,7 @@ export type MarketplaceSalePayload = {
   patronageAmount?: number;
   vendorCode: string;
   buyerParticipantId?: string;
+  cashAccountCode?: string;
   memo?: string;
   metadata?: Record<string, unknown>;
 };

@@ -3,6 +3,7 @@ import type { StoreDatabase } from "../db/client";
 import { products, vendors } from "../db/schema";
 import type { WorkerEnv } from "../env";
 import { resolvePublicImageUrl } from "../lib/product-image-url";
+import { serializeCatalogItem } from "../lib/catalog-item";
 
 export class StorefrontError extends Error {
   constructor(
@@ -38,6 +39,10 @@ export async function getStorefrontBySlug(db: StoreDatabase, slug: string, env: 
       patronagePerUnit: products.patronagePerUnit,
       currency: products.currency,
       imageUrl: products.imageUrl,
+      imageUrls: products.imageUrls,
+      shortDescription: products.shortDescription,
+      highlights: products.highlights,
+      features: products.features,
     })
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
@@ -50,17 +55,7 @@ export async function getStorefrontBySlug(db: StoreDatabase, slug: string, env: 
     );
 
   const items = itemRows
-    .map((row) => ({
-      vendorCode: row.vendorCode,
-      vendorSlug: row.vendorSlug,
-      sku: row.sku,
-      name: row.name,
-      category: row.category,
-      unitPrice: row.unitPrice,
-      patronagePerUnit: row.patronagePerUnit,
-      currency: row.currency,
-      imageUrl: resolvePublicImageUrl(env, row.imageUrl),
-    }))
+    .map((row) => serializeCatalogItem(env, row))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return {

@@ -1,4 +1,37 @@
 import { z } from "zod";
+import {
+  MAX_PRODUCT_COPY_WORDS,
+  MAX_PRODUCT_GALLERY_IMAGES,
+  productCopyWordLimitError,
+  totalProductCopyWords,
+} from "./product-copy";
+
+export const productCopyFieldSchema = z.string().max(8000).nullable().optional();
+
+export const productCopyFieldsBaseSchema = z.object({
+  shortDescription: productCopyFieldSchema,
+  highlights: productCopyFieldSchema,
+  features: productCopyFieldSchema,
+});
+
+function refineProductCopyWordLimit<T extends z.ZodTypeAny>(schema: T) {
+  return schema.superRefine((data, ctx) => {
+    const total = totalProductCopyWords(data as ProductCopyFieldsInput);
+    if (total > MAX_PRODUCT_COPY_WORDS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: productCopyWordLimitError(total),
+        path: ["shortDescription"],
+      });
+    }
+  });
+}
+
+type ProductCopyFieldsInput = z.infer<typeof productCopyFieldsBaseSchema>;
+
+export const productCopyFieldsSchema = refineProductCopyWordLimit(productCopyFieldsBaseSchema);
+
+export type ProductCopyFields = z.infer<typeof productCopyFieldsSchema>;
 
 export const healthResponseSchema = z.object({
   ok: z.boolean(),
@@ -20,6 +53,10 @@ export const catalogItemPublicSchema = z.object({
   patronagePerUnit: z.string(),
   currency: z.string(),
   imageUrl: z.string().url().nullable().optional(),
+  imageUrls: z.array(z.string().url()).max(MAX_PRODUCT_GALLERY_IMAGES).optional(),
+  shortDescription: z.string().nullable().optional(),
+  highlights: z.string().nullable().optional(),
+  features: z.string().nullable().optional(),
 });
 
 export type CatalogItemPublic = z.infer<typeof catalogItemPublicSchema>;
@@ -264,36 +301,40 @@ export type PlatformCommerceSettings = z.infer<typeof platformCommerceSettingsSc
 export const updatePlatformSettingsSchema = platformCommerceSettingsSchema.partial();
 export type UpdatePlatformSettingsRequest = z.infer<typeof updatePlatformSettingsSchema>;
 
-export const createListingRequestSchema = z.object({
-  /** Optional prefix; server appends a UTC timestamp for uniqueness. */
-  sku: z.string().min(1).max(48).optional(),
-  name: z.string().min(2).max(255),
-  category: z.string().min(1).max(128),
-  /** Suggested retail price (SRP) in PHP. */
-  unitPrice: moneyStringSchema,
-  /** Partner listing fee % of SRP; ignored for coop/member sellers. */
-  listingFeePercent: percentStringSchema.optional(),
-  deliveryTier: deliveryTierSchema.default("standard"),
-  /** Product-level delivery override per item (PHP). */
-  deliveryPerItem: moneyStringSchema.optional(),
-  patronageEligible: z.boolean().default(true),
-  submitForReview: z.boolean().default(true),
-});
+export const createListingRequestSchema = refineProductCopyWordLimit(
+  productCopyFieldsBaseSchema.extend({
+    /** Optional prefix; server appends a UTC timestamp for uniqueness. */
+    sku: z.string().min(1).max(48).optional(),
+    name: z.string().min(2).max(255),
+    category: z.string().min(1).max(128),
+    /** Suggested retail price (SRP) in PHP. */
+    unitPrice: moneyStringSchema,
+    /** Partner listing fee % of SRP; ignored for coop/member sellers. */
+    listingFeePercent: percentStringSchema.optional(),
+    deliveryTier: deliveryTierSchema.default("standard"),
+    /** Product-level delivery override per item (PHP). */
+    deliveryPerItem: moneyStringSchema.optional(),
+    patronageEligible: z.boolean().default(true),
+    submitForReview: z.boolean().default(true),
+  }),
+);
 
 export type CreateListingRequest = z.infer<typeof createListingRequestSchema>;
 
-export const updateListingRequestSchema = z.object({
-  name: z.string().min(2).max(255).optional(),
-  category: z.string().min(1).max(128).optional(),
-  unitPrice: moneyStringSchema.optional(),
-  listingFeePercent: percentStringSchema.nullable().optional(),
-  deliveryTier: deliveryTierSchema.optional(),
-  deliveryPerItem: moneyStringSchema.nullable().optional(),
-  patronageEligible: z.boolean().optional(),
-  /** New SKU prefix — server assigns a fresh timestamp suffix. */
-  skuBase: z.string().min(1).max(48).optional(),
-  submitForReview: z.boolean().optional(),
-});
+export const updateListingRequestSchema = refineProductCopyWordLimit(
+  productCopyFieldsBaseSchema.extend({
+    name: z.string().min(2).max(255).optional(),
+    category: z.string().min(1).max(128).optional(),
+    unitPrice: moneyStringSchema.optional(),
+    listingFeePercent: percentStringSchema.nullable().optional(),
+    deliveryTier: deliveryTierSchema.optional(),
+    deliveryPerItem: moneyStringSchema.nullable().optional(),
+    patronageEligible: z.boolean().optional(),
+    /** New SKU prefix — server assigns a fresh timestamp suffix. */
+    skuBase: z.string().min(1).max(48).optional(),
+    submitForReview: z.boolean().optional(),
+  }),
+).refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
 
 export type UpdateListingRequest = z.infer<typeof updateListingRequestSchema>;
 
@@ -321,6 +362,10 @@ export const merchantListingSchema = z.object({
   patronageEligible: z.boolean(),
   currency: z.string(),
   imageUrl: z.string().url().nullable().optional(),
+  imageUrls: z.array(z.string().url()).max(MAX_PRODUCT_GALLERY_IMAGES).optional(),
+  shortDescription: z.string().nullable().optional(),
+  highlights: z.string().nullable().optional(),
+  features: z.string().nullable().optional(),
   listingStatus: listingStatusSchema,
   isActive: z.boolean(),
   updatedAt: z.string(),

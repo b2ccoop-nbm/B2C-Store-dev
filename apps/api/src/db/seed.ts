@@ -143,8 +143,20 @@ const connectionString =
   process.env.DATABASE_URL ??
   "postgresql://postgres:postgres@localhost:5434/b2ccoop_store";
 
+function isProductionDatabase(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    process.env.ENVIRONMENT === "production" ||
+    (lower.includes("neon.tech") && lower.includes("b2ccoop_store"))
+  );
+}
+
 async function main() {
-  const withFixtures = process.env.SEED_DEV_FIXTURES !== "0";
+  let withFixtures = process.env.SEED_DEV_FIXTURES !== "0";
+  if (withFixtures && isProductionDatabase(connectionString)) {
+    console.warn("Refusing dev fixtures on production database (set SEED_DEV_FIXTURES=0 explicitly to silence).");
+    withFixtures = false;
+  }
   const { db, close } = createDb(connectionString);
 
   try {

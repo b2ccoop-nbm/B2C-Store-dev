@@ -14,6 +14,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
   const stickyCheckoutBtn = document.getElementById("sticky-checkout-btn");
   const fulfillmentEl = document.getElementById("fulfillment-options");
   const paymentEl = document.getElementById("payment-options");
+  const onlinePaymentHint = document.getElementById("online-payment-hint");
   const deliveryFields = document.getElementById("delivery-address-fields");
   const pickupSummary = document.getElementById("pickup-summary");
 
@@ -38,7 +39,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
   function submitLabel(): string {
     if (paymentMethod === "online") {
-      return "Continue to pay with QR Ph";
+      return "Continue to PayMongo";
     }
     return fulfillmentMode === "delivery"
       ? "Place order — pay on delivery"
@@ -47,7 +48,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
   function paymentHint(): string {
     if (paymentMethod === "online") {
-      return "You’ll scan a QR Ph code on PayMongo — GCash, Maya, and bank apps can scan it.";
+      return "PayMongo: tap GCash or Maya, or scan QR Ph when the code is fully loaded.";
     }
     return fulfillmentMode === "delivery"
       ? "Pay when your order is delivered."
@@ -81,6 +82,10 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
     const isDelivery = fulfillmentMode === "delivery";
     deliveryFields?.classList.toggle("hidden", !isDelivery);
     pickupSummary?.classList.toggle("hidden", isDelivery || !quote?.pickupAvailable);
+    onlinePaymentHint?.classList.toggle(
+      "hidden",
+      !onlinePaymentEnabled || paymentMethod !== "online",
+    );
     if (checkoutSubmit instanceof HTMLButtonElement) {
       checkoutSubmit.textContent = submitLabel();
     }
@@ -370,7 +375,7 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
     if (checkoutSubmit instanceof HTMLButtonElement) {
       checkoutSubmit.disabled = true;
-      checkoutSubmit.textContent = paymentMethod === "online" ? "Opening QR Ph checkout…" : "Placing order…";
+      checkoutSubmit.textContent = paymentMethod === "online" ? "Opening PayMongo…" : "Placing order…";
     }
     try {
       const res = await fetch(`${apiBase}/checkout`, {

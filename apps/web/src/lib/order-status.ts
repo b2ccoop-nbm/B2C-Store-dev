@@ -12,7 +12,7 @@ const ORDER_LABELS: Record<OrderStatus, string> = {
 
 const PAYMENT_METHOD_LABELS = {
   pickup: "Pay on delivery / pickup",
-  online: "Pay online (QR Ph)",
+  online: "Pay online (GCash / Maya / QR Ph)",
 } as const;
 
 const FULFILLMENT_LABELS: Record<FulfillmentStatus, string> = {
@@ -42,7 +42,7 @@ export function orderStatusBadgeLabel(order: OrderDetail): string {
 
 export function orderReceiptMessage(order: OrderDetail): string {
   if (order.status === "PENDING_PAYMENT") {
-    return "Complete payment by scanning the QR Ph code on PayMongo. GCash, Maya, and bank apps can scan QR Ph.";
+    return "Complete payment on PayMongo — tap GCash or Maya, or scan QR Ph when the code is fully loaded.";
   }
   if (order.status === "PENDING_DELIVERY") {
     return order.paidOnline
@@ -60,7 +60,9 @@ export function orderReceiptMessage(order: OrderDetail): string {
       : "Payment recorded. Thank you for shopping with your coop.";
   }
   if (order.status === "FAILED") {
-    return "Payment was received but confirmation could not be completed — staff can retry below.";
+    return order.paidOnline
+      ? "Payment received — your order is being processed. Ledger confirmation is pending."
+      : "Payment confirmation failed — staff can retry below.";
   }
   return "Order status updates will appear here.";
 }

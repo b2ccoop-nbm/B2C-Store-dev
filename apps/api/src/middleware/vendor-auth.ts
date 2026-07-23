@@ -1,9 +1,14 @@
 import type { Context, Next } from "hono";
 import { createDb } from "../db/client";
-import { getVendorByToken } from "../services/vendors";
+import { verifyFirebaseIdToken } from "../lib/firebase-auth";
+import { isVendorTokenFormat } from "../lib/vendor-token";
+import {
+  getVendorByToken,
+  resolveMerchantVendorForFirebaseUser,
+} from "../services/vendors";
 import { resolveDatabaseUrl, type WorkerEnv } from "../env";
 
-export type MerchantAuthMode = "vendor_token" | "dev_admin";
+export type MerchantAuthMode = "vendor_token" | "firebase_sso" | "dev_admin";
 
 export type MerchantVariables = {
   merchantAuthMode: MerchantAuthMode;
@@ -23,7 +28,7 @@ function legacyStaffSecretOk(
   return Boolean(expected && token === expected);
 }
 
-/** Authenticate merchant API: per-vendor token (production) or legacy DEV_ADMIN_SECRET + X-Vendor-Code (dev). */
+/** Authenticate merchant API: Firebase member SSO, per-vendor token, or dev staff secret. */
 export function merchantAuth() {
   return async (c: Context<{ Bindings: WorkerEnv; Variables: MerchantVariables }>, next: Next) => {
     const token = parseBearer(c);
@@ -35,19 +40,36 @@ export function merchantAuth() {
     if (dbUrl) {
       const { db, close } = createDb(dbUrl);
       try {
-        const vendor = await getVendorByToken(db, token);
-        if (vendor) {
-          c.set("merchantAuthMode", "vendor_token");
-          c.set("vendorCode", vendor.code);
-          await next();
-          return;
+        if (isVendorTokenFormat(token)) {
+          const vendor = await getVendorByToken(db, token);
+          if (vendor) {
+            c.set("merchantAuthMode", "vendor_token");
+            c.set("vendorCode", vendor.code);
+            await next();
+            return;
+          }
+        } else {
+          const firebaseUser = await verifyFirebaseIdToken(c.env, token);
+          if (firebaseUser) {
+            const vendor = await resolveMerchantVendorForFirebaseUser(
+              db,
+              firebaseUser.uid,
+              firebaseUser.email,
+            );
+            if (vendor) {
+              c.set("merchantAuthMode", "firebase_sso");
+              c.set("vendorCode", vendor.code);
+              await next();
+              return;
+            }
+          }
         }
       } finally {
         await close();
       }
     }
 
-    // Legacy staff-secret impersonation is dev-only — production vendors use per-vendor tokens.
+    // Legacy staff-secret impersonation is dev-only — production vendors use Firebase SSO or tokens.
     if (c.env.ENVIRONMENT === "production") {
       return c.json({ error: "Unauthorized" }, 401);
     }

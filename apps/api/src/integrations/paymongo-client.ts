@@ -1,7 +1,7 @@
 import type { WorkerEnv } from "../env";
 
-/** PayMongo checkout — QR Ph only (GCash/Maya pay by scanning the QR Ph code). */
-export const PAYMONGO_PAYMENT_METHOD_TYPES = ["qrph"] as const;
+/** PayMongo checkout — QR Ph, GCash, and Maya on hosted checkout. */
+export const PAYMONGO_PAYMENT_METHOD_TYPES = ["qrph", "gcash", "paymaya"] as const;
 
 export type PaymongoCheckoutLine = {
   name: string;
@@ -19,6 +19,70 @@ function isConfigured(env: WorkerEnv): boolean {
 
 export function paymongoConfigured(env: WorkerEnv): boolean {
   return isConfigured(env);
+}
+
+export type PaymongoCheckoutSessionStatus =
+  | { ok: true; paid: boolean; referenceNumber: string | null }
+  | { ok: false; error: string };
+
+export async function getPaymongoCheckoutSession(
+  env: WorkerEnv,
+  sessionId: string,
+): Promise<PaymongoCheckoutSessionStatus> {
+  if (!isConfigured(env)) {
+    return { ok: false, error: "PayMongo not configured (PAYMONGO_SECRET_KEY)" };
+  }
+
+  const secret = env.PAYMONGO_SECRET_KEY!.trim();
+  const auth = btoa(`${secret}:`);
+  const id = sessionId.trim();
+
+  try {
+    const res = await fetch(`https://api.paymongo.com/v1/checkout_sessions/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+    });
+
+    const text = await res.text();
+    let json: unknown = text;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      /* plain text */
+    }
+
+    if (!res.ok) {
+      const msg =
+        typeof json === "object" && json && "errors" in json
+          ? JSON.stringify((json as { errors: unknown }).errors).slice(0, 200)
+          : text.slice(0, 200);
+      return { ok: false, error: msg || `PayMongo HTTP ${res.status}` };
+    }
+
+    const data = json as {
+      data?: {
+        attributes?: {
+          reference_number?: string | null;
+          payments?: Array<{ attributes?: { status?: string } }>;
+        };
+      };
+    };
+
+    const attributes = data.data?.attributes;
+    const payments = attributes?.payments ?? [];
+    const paid = payments.some((payment) => payment.attributes?.status === "paid");
+
+    return {
+      ok: true,
+      paid,
+      referenceNumber: attributes?.reference_number?.trim() ?? null,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
 }
 
 export async function createPaymongoCheckoutSession(

@@ -9,7 +9,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 <MarketplaceLayout title="Cart">
   <header class="mb-6">
     <h1 class="text-display m-0">Your cart</h1>
-    <p class="text-body-sm text-neutral-500 mt-1 m-0">One seller per order. Choose delivery or pickup, then pay on delivery or online via QR Ph.</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">One seller per order. Choose delivery or pickup, then pay on delivery or online via GCash, Maya, or QR Ph.</p>
   </header>
 
   <div id="cart-root" aria-live="polite">
@@ -42,9 +42,17 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
         </label>
         <label class="flex items-start gap-3 text-body-sm cursor-pointer">
           <input type="radio" name="paymentMethod" value="online" class="mt-1" />
-          <span><strong>Pay online now</strong> — QR Ph on PayMongo (scan with GCash, Maya, or bank app)</span>
+          <span><strong>Pay online now</strong> — GCash, Maya, or QR Ph on PayMongo</span>
         </label>
       </fieldset>
+      <p
+        id="online-payment-hint"
+        class="hidden text-body-sm text-neutral-600 m-0 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3"
+        role="note"
+      >
+        On PayMongo, choose <strong>GCash</strong> or <strong>Maya</strong> to open your wallet app, or <strong>QR Ph</strong> to scan.
+        Wait until the QR is fully loaded before scanning — max brightness helps GCash read it faster.
+      </p>
 
       <div id="delivery-address-fields" class="space-y-4">
         <p class="text-body-sm font-semibold m-0">Delivery address</p>

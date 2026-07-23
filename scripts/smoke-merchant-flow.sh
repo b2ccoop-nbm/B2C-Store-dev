@@ -2,7 +2,7 @@
 # E2E smoke: seller apply → HQ approve → listing → publish → storefront
 set -euo pipefail
 
-API_BASE="${API_BASE:-https://b2ccoop-store-api.nmatunog.workers.dev}"
+API_BASE="${API_BASE:-http://127.0.0.1:8787}"
 ADMIN_SECRET="${ADMIN_SECRET:-}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

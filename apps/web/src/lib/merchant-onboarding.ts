@@ -3,7 +3,8 @@ import { getApplicationStatusToken } from "@/lib/application-status";
 import { getFirebaseIdToken, getStoredMemberEmail } from "@/lib/member-auth";
 import {
   getMerchantEmail,
-  hasMerchantSession,
+  hasMerchantAccess,
+  merchantHeaders,
 } from "@/lib/merchant-session";
 
 export type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED" | null;
@@ -30,7 +31,7 @@ export type OnboardingStep =
 export const ONBOARDING_STEPS: ReadonlyArray<{ id: OnboardingStep; label: string }> = [
   { id: "apply", label: "Apply" },
   { id: "await_approval", label: "Await approval" },
-  { id: "setup_store", label: "Set up store" },
+  { id: "setup_store", label: "Sign in" },
   { id: "first_listing", label: "First listing" },
   { id: "await_publish", label: "Await publish" },
   { id: "live", label: "Live" },
@@ -77,23 +78,19 @@ export async function fetchSellerApplication(
 
 export function resolveOnboardingStep(
   app: SellerApplication | null,
-  hasSession: boolean,
+  hasAccess: boolean,
   listingSummary?: { hasActive: boolean; hasPending: boolean },
 ): OnboardingStep {
   if (!app) return "apply";
   if (app.status === "PENDING") return "await_approval";
   if (app.status === "REJECTED") return "apply";
   if (app.status === "APPROVED") {
-    if (!hasSession) return "setup_store";
+    if (!hasAccess) return "setup_store";
     if (listingSummary?.hasActive) return "live";
     if (listingSummary?.hasPending) return "await_publish";
     return "first_listing";
   }
   return "apply";
-}
-
-export function canUseMerchantTools(app: SellerApplication | null): boolean {
-  return app?.status === "APPROVED" && hasMerchantSession();
 }
 
 export function renderOnboardingStepper(current: OnboardingStep): string {
@@ -119,13 +116,13 @@ export function renderOnboardingStepper(current: OnboardingStep): string {
 export async function loadOnboardingContext(apiBase = API_BASE) {
   const application = await fetchSellerApplication(apiBase).catch(() => null);
   const email = application?.applicantEmail ?? getMerchantEmail() ?? getStoredMemberEmail();
+  const hasAccess = await hasMerchantAccess(apiBase);
 
   let listingSummary: { hasActive: boolean; hasPending: boolean } | undefined;
 
-  if (application?.status === "APPROVED" && hasMerchantSession()) {
+  if (application?.status === "APPROVED" && hasAccess) {
     try {
-      const { merchantHeaders } = await import("@/lib/merchant-session");
-      const res = await fetch(`${apiBase}/merchant/listings`, { headers: merchantHeaders() });
+      const res = await fetch(`${apiBase}/merchant/listings`, { headers: await merchantHeaders() });
       if (res.ok) {
         const data = await res.json();
         const listings = (data.listings ?? []) as Array<{ listingStatus: string }>;
@@ -139,11 +136,12 @@ export async function loadOnboardingContext(apiBase = API_BASE) {
     }
   }
 
-  const step = resolveOnboardingStep(application, hasMerchantSession(), listingSummary);
+  const step = resolveOnboardingStep(application, hasAccess, listingSummary);
   return {
     email,
     application,
     step,
-    canSell: canUseMerchantTools(application),
+    hasAccess,
+    canSell: application?.status === "APPROVED" && hasAccess,
   };
 }

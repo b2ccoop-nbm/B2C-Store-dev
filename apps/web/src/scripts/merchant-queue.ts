@@ -49,7 +49,7 @@ export function setupMerchantQueue(apiBase = API_BASE): void {
   async function advanceFulfillment(orderId: string, status: FulfillmentStatus) {
     const res = await fetch(`${apiBase}/merchant/orders/${orderId}/fulfillment`, {
       method: "PATCH",
-      headers: { ...merchantHeaders(), "Content-Type": "application/json" },
+      headers: { ...(await merchantHeaders()), "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
     const data = await res.json();
@@ -60,7 +60,7 @@ export function setupMerchantQueue(apiBase = API_BASE): void {
   async function confirmOrder(orderId: string) {
     const res = await fetch(`${apiBase}/merchant/orders/${orderId}/confirm`, {
       method: "PATCH",
-      headers: merchantHeaders(),
+      headers: await merchantHeaders(),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Confirm failed");
@@ -170,7 +170,7 @@ export function setupMerchantQueue(apiBase = API_BASE): void {
     if (!list) return;
 
     try {
-      const res = await fetch(`${apiBase}/merchant/orders/pending`, { headers: merchantHeaders() });
+      const res = await fetch(`${apiBase}/merchant/orders/pending`, { headers: await merchantHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Load failed");
 

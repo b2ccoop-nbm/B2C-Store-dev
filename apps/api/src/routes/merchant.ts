@@ -18,7 +18,7 @@ import {
   MerchantListingError,
   updateMerchantListing,
 } from "../services/merchant-listings";
-import { ProductImageError, uploadProductImage } from "../services/product-image";
+import { ProductImageError, deleteProductImageAtSlot, uploadProductImage } from "../services/product-image";
 import {
   getMerchantProfile,
   MerchantProfileError,
@@ -54,6 +54,7 @@ export async function getMerchantSession(c: MerchantContext) {
     }
     return c.json({
       ok: true,
+      authMode: c.get("merchantAuthMode"),
       vendor: {
         code: vendor.code,
         slug: vendor.slug,
@@ -252,7 +253,8 @@ export async function postMerchantListingImage(c: MerchantContext) {
 
   const { db, close } = createDb(dbUrl);
   try {
-    const result = await uploadProductImage(c.env, db, vendorCode, sku, file);
+    const slot = c.req.query("slot") ?? undefined;
+    const result = await uploadProductImage(c.env, db, vendorCode, sku, file, slot);
     return c.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof ProductImageError) {
@@ -261,6 +263,33 @@ export async function postMerchantListingImage(c: MerchantContext) {
     const message = err instanceof Error ? err.message : "Image upload failed";
     console.error("[postMerchantListingImage]", err);
     return c.json({ error: message }, 500);
+  } finally {
+    await close();
+  }
+}
+
+export async function deleteMerchantListingImage(c: MerchantContext) {
+  const dbUrl = resolveDatabaseUrl(c.env);
+  if (!dbUrl) {
+    return c.json({ error: "Database not configured" }, 503);
+  }
+
+  const vendorCode = getVendorCode(c);
+  const sku = c.req.param("sku");
+  const slot = c.req.param("slot");
+  if (!sku?.trim() || slot == null) {
+    return c.json({ error: "SKU and slot required" }, 400);
+  }
+
+  const { db, close } = createDb(dbUrl);
+  try {
+    const result = await deleteProductImageAtSlot(c.env, db, vendorCode, sku, slot);
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof ProductImageError) {
+      return c.json({ error: err.message }, err.status);
+    }
+    throw err;
   } finally {
     await close();
   }

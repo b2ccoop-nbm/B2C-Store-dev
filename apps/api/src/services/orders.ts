@@ -1,9 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DeliveryAddress, FulfillmentStatus } from "@b2ccoop/store-shared";
 import type { StoreDatabase } from "../db/client";
-import { orderLines, orders } from "../db/schema";
+import { orderLines, orders, vendors } from "../db/schema";
 import { postMarketplaceSale } from "../integrations/accounting-client";
+import { getPaymongoCheckoutSession } from "../integrations/paymongo-client";
 import type { WorkerEnv } from "../env";
+import { provisionVendorInAccounting } from "./accounting-vendors";
 
 type OrderRow = typeof orders.$inferSelect;
 
@@ -119,9 +121,24 @@ async function postOrderToAccounting(
   const lines = await db.select().from(orderLines).where(eq(orderLines.orderId, order.id));
   const deliveryFee = Number(order.deliveryFeeAmount ?? 0);
   const merchandiseGross = Number(order.grossAmount);
-  const merchandiseSales = Number(order.salesAmount);
+  const vendorPayableAmount = Number(order.vendorPayableAmount);
   const grossAmount = merchandiseGross + deliveryFee;
-  const salesAmount = merchandiseSales + deliveryFee;
+  const salesAmount = grossAmount - vendorPayableAmount;
+
+  const vendorRows = await db
+    .select({ name: vendors.name, email: vendors.email })
+    .from(vendors)
+    .where(eq(vendors.code, order.vendorCode))
+    .limit(1);
+  const vendorRow = vendorRows[0];
+  await provisionVendorInAccounting(env, {
+    code: order.vendorCode,
+    name: vendorRow?.name ?? order.vendorCode,
+    email: vendorRow?.email ?? undefined,
+  });
+
+  const paidOnline = isPaidOnlineOrder(order);
+  const cashAccountCode = paidOnline || channel.includes("paymongo") ? "11190" : undefined;
 
   return postMarketplaceSale(env, {
     externalId: order.externalId,
@@ -129,12 +146,13 @@ async function postOrderToAccounting(
     currency: order.currency,
     grossAmount,
     salesAmount,
-    vendorPayableAmount: Number(order.vendorPayableAmount),
+    vendorPayableAmount,
     cogsAmount: Number(order.cogsAmount),
     patronageAmount: Number(order.patronageAmount),
     vendorCode: order.vendorCode,
     buyerParticipantId: order.participantId ?? undefined,
     memo: order.memo ?? undefined,
+    cashAccountCode,
     metadata: {
       orderId: order.id,
       guestEmail: order.guestEmail ?? undefined,
@@ -162,7 +180,14 @@ async function finalizePaidOrder(
   }
 
   const accountingResult = await postOrderToAccounting(db, env, order, channel);
-  const finalStatus = accountingResult.ok ? "POSTED_TO_LEDGER" : "FAILED";
+  const paidOnline = isPaidOnlineOrder(order);
+  const finalStatus = accountingResult.ok
+    ? "POSTED_TO_LEDGER"
+    : paidOnline
+      ? order.fulfillmentMode === "merchant_pickup"
+        ? "PENDING_PICKUP"
+        : "PENDING_DELIVERY"
+      : "FAILED";
 
   await db
     .update(orders)
@@ -178,6 +203,17 @@ async function finalizePaidOrder(
     .where(eq(orders.id, order.id));
 
   if (!accountingResult.ok) {
+    if (paidOnline) {
+      return {
+        orderId: order.id,
+        externalId: order.externalId,
+        status: finalStatus,
+        accounting: {
+          status: "failed" as const,
+          error: accountingResult.error,
+        },
+      };
+    }
     throw new OrderError(
       accountingResult.error ?? "Accounting post failed — order marked FAILED for retry",
       400,
@@ -392,27 +428,130 @@ export async function fulfillOnlinePayment(
     return { orderId: order.id, status: order.status, skipped: true as const };
   }
 
-  if (order.status !== "PENDING_PAYMENT" && order.status !== "FAILED") {
+  const alreadyPaidOnline = isPaidOnlineOrder(order);
+  const canFulfill =
+    order.status === "PENDING_PAYMENT" ||
+    order.status === "FAILED" ||
+    (alreadyPaidOnline &&
+      (order.status === "PENDING_DELIVERY" || order.status === "PENDING_PICKUP"));
+
+  if (!canFulfill) {
     throw new OrderError(`Cannot fulfill online payment for status ${order.status}`, 409);
   }
 
-  await db
-    .update(orders)
-    .set({
-      status: "PAID",
-      updatedAt: new Date(),
-      metadata: {
-        ...orderMetadata(order),
-        paymongoEventId,
-        paidAt: new Date().toISOString(),
-        paidOnline: true,
-      },
-    })
-    .where(eq(orders.id, order.id));
+  let working = order;
+  if (order.status === "PENDING_PAYMENT" || order.status === "FAILED") {
+    await db
+      .update(orders)
+      .set({
+        status: "PAID",
+        updatedAt: new Date(),
+        metadata: {
+          ...orderMetadata(order),
+          paymongoEventId,
+          paidAt: new Date().toISOString(),
+          paidOnline: true,
+        },
+      })
+      .where(eq(orders.id, order.id));
 
-  const paid = await db.select().from(orders).where(eq(orders.id, order.id)).limit(1);
-  const result = await finalizePaidOrder(db, env, paid[0]!, "store_paymongo_webhook");
+    const paid = await db.select().from(orders).where(eq(orders.id, order.id)).limit(1);
+    working = paid[0]!;
+  }
+
+  const result = await finalizePaidOrder(db, env, working, "store_paymongo_webhook");
   return { ...result, skipped: false as const };
+}
+
+async function findOrderByPaymongoSessionId(db: StoreDatabase, sessionId: string) {
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(sql`${orders.metadata}->>'paymongoSessionId' = ${sessionId}`)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Poll PayMongo when customer returns from hosted checkout before webhook arrives. */
+export async function syncOnlineOrderPayment(
+  db: StoreDatabase,
+  env: WorkerEnv,
+  orderId: string,
+) {
+  const rows = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const order = rows[0];
+  if (!order) {
+    throw new OrderError("Order not found", 404);
+  }
+
+  if (order.status === "POSTED_TO_LEDGER") {
+    return { orderId: order.id, status: order.status, synced: true as const, skipped: true as const };
+  }
+
+  const meta = orderMetadata(order);
+  if (
+    meta.paidOnline === true &&
+    (order.status === "FAILED" ||
+      order.status === "PENDING_DELIVERY" ||
+      order.status === "PENDING_PICKUP")
+  ) {
+    const result = await fulfillOnlinePayment(db, env, order.externalId, "sync:retry");
+    return { ...result, synced: true as const };
+  }
+
+  if (order.status !== "PENDING_PAYMENT" && order.status !== "FAILED") {
+    throw new OrderError(`Order is ${order.status}, not awaiting online payment`, 409);
+  }
+
+  if (meta.paymentMethod !== "online") {
+    throw new OrderError("This order is not configured for online payment", 409);
+  }
+
+  const sessionId =
+    typeof meta.paymongoSessionId === "string" ? meta.paymongoSessionId.trim() : "";
+  if (!sessionId) {
+    throw new OrderError("PayMongo checkout session not found on this order", 409);
+  }
+
+  const session = await getPaymongoCheckoutSession(env, sessionId);
+  if (!session.ok) {
+    throw new OrderError(`PayMongo: ${session.error}`);
+  }
+
+  if (!session.paid) {
+    return {
+      orderId: order.id,
+      status: order.status,
+      synced: false as const,
+      pending: true as const,
+    };
+  }
+
+  const result = await fulfillOnlinePayment(
+    db,
+    env,
+    order.externalId,
+    `sync:${sessionId}`,
+  );
+  return { ...result, synced: true as const };
+}
+
+export async function resolveOrderForPaymongoWebhook(
+  db: StoreDatabase,
+  input: { reference?: string; sessionId?: string },
+) {
+  const reference = input.reference?.trim();
+  if (reference) {
+    const rows = await db.select().from(orders).where(eq(orders.externalId, reference)).limit(1);
+    if (rows[0]) return rows[0];
+  }
+
+  const sessionId = input.sessionId?.trim();
+  if (sessionId) {
+    return findOrderByPaymongoSessionId(db, sessionId);
+  }
+
+  return null;
 }
 
 export function nextFulfillmentStatus(current: FulfillmentStatus): FulfillmentStatus | null {

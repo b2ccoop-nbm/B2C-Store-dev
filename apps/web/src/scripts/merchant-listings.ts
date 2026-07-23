@@ -1,10 +1,16 @@
 import { stripListingSkuTimestamp } from "@b2ccoop/store-shared";
 import { API_BASE } from "@/lib/api";
 import { merchantAuthHeaders, merchantHeaders } from "@/lib/merchant-session";
+import {
+  formatProductCopyHint,
+  totalProductCopyWords,
+  validateProductCopy,
+} from "@/lib/product-copy-ui";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CATEGORIES = ["Groceries", "Produce", "Dairy", "Bakery", "Household", "Health", "General"];
+const IMAGE_SLOTS = [0, 1, 2, 3] as const;
 
 type MerchantListingRow = {
   name: string;
@@ -15,6 +21,10 @@ type MerchantListingRow = {
   listingStatus: string;
   isActive: boolean;
   imageUrl: string | null;
+  imageUrls?: string[] | null;
+  shortDescription?: string | null;
+  highlights?: string | null;
+  features?: string | null;
 };
 
 function escapeHtml(value: string): string {
@@ -42,25 +52,48 @@ function statusLabel(status: string, isActive: boolean): string {
   return status.replace(/_/g, " ");
 }
 
+function coverImageUrl(listing: MerchantListingRow): string | null {
+  const gallery = listing.imageUrls?.filter(Boolean) ?? [];
+  return gallery[0] ?? listing.imageUrl;
+}
+
 function photoCell(listing: MerchantListingRow): string {
   const sku = escapeHtml(listing.sku);
-  const thumb = listing.imageUrl
-    ? `<img src="${escapeHtml(listing.imageUrl)}" alt="" class="listing-photo-thumb h-12 w-12 shrink-0 rounded-lg border border-neutral-200 object-cover" width="48" height="48" />`
+  const cover = coverImageUrl(listing);
+  const count = listing.imageUrls?.filter(Boolean).length ?? (cover ? 1 : 0);
+  const thumb = cover
+    ? `<img src="${escapeHtml(cover)}" alt="" class="listing-photo-thumb h-12 w-12 shrink-0 rounded-lg border border-neutral-200 object-cover" width="48" height="48" />`
     : `<span class="listing-photo-thumb flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 text-caption text-neutral-400" aria-hidden="true">—</span>`;
-  const label = listing.imageUrl ? "Change photo" : "Add photo";
 
   return `<td class="py-3 pr-4" data-listing-photo-cell data-sku="${sku}">
     <div class="flex flex-wrap items-center gap-3">
       ${thumb}
-      <div class="min-w-0">
-        <label class="inline-flex cursor-pointer items-center rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-caption font-semibold text-neutral-800 hover:bg-neutral-50">
-          <input type="file" class="sr-only" data-listing-photo-input data-sku="${sku}" accept="image/jpeg,image/png,image/webp" />
-          <span data-listing-photo-label>${label}</span>
-        </label>
-        <p class="listing-photo-status text-caption text-neutral-500 m-0 mt-1" data-listing-photo-status></p>
-      </div>
+      <p class="text-caption text-neutral-500 m-0">${count ? `${count} photo${count === 1 ? "" : "s"}` : "No photos"} — edit to manage gallery</p>
     </div>
   </td>`;
+}
+
+function gallerySlotHtml(listing: MerchantListingRow, slot: number): string {
+  const sku = escapeAttr(listing.sku);
+  const urls = listing.imageUrls?.filter(Boolean) ?? (listing.imageUrl ? [listing.imageUrl] : []);
+  const url = urls[slot] ?? null;
+  const preview = url
+    ? `<img src="${escapeHtml(url)}" alt="" class="listing-gallery-preview mt-2 max-h-24 w-full rounded-lg border border-neutral-200 object-contain" data-listing-gallery-preview data-slot="${slot}" />`
+    : `<img alt="" class="listing-gallery-preview hidden mt-2 max-h-24 w-full rounded-lg border border-neutral-200 object-contain" data-listing-gallery-preview data-slot="${slot}" />`;
+  const removeBtn = url
+    ? `<button type="button" data-listing-photo-remove data-sku="${sku}" data-slot="${slot}" class="mt-2 rounded-lg border border-danger-600/30 bg-danger-50 px-2 py-1 text-caption font-semibold text-danger-600">Remove</button>`
+    : "";
+
+  return `<div class="rounded-lg border border-neutral-200 p-3" data-listing-gallery-slot data-sku="${sku}" data-slot="${slot}">
+    <label class="block text-caption font-semibold text-neutral-700 mb-2">Photo ${slot + 1}${slot === 0 ? " (cover)" : ""}</label>
+    <label class="inline-flex cursor-pointer items-center rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-caption font-semibold text-neutral-800 hover:bg-neutral-50">
+      <input type="file" class="sr-only" data-listing-photo-input data-sku="${sku}" data-slot="${slot}" accept="image/jpeg,image/png,image/webp" />
+      <span>${url ? "Replace" : "Upload"}</span>
+    </label>
+    ${preview}
+    ${removeBtn}
+    <p class="listing-photo-status text-caption text-neutral-500 m-0 mt-1" data-listing-photo-status data-slot="${slot}"></p>
+  </div>`;
 }
 
 function editFormRow(listing: MerchantListingRow): string {
@@ -97,6 +130,33 @@ function editFormRow(listing: MerchantListingRow): string {
             <span class="font-medium">Patronage / unit</span>
             <input type="text" readonly value="${escapeAttr(listing.patronagePerUnit)}" class="mt-1 w-full min-h-touch rounded-lg border border-neutral-100 bg-neutral-50 px-3" title="Computed from coop revenue — edit SRP to recalculate" />
           </label>
+        </div>
+        <label class="block text-body-sm">
+          <span class="font-medium">Short description</span>
+          <textarea name="shortDescription" rows="3" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2">${escapeHtml(listing.shortDescription ?? "")}</textarea>
+        </label>
+        <label class="block text-body-sm">
+          <span class="font-medium">Highlights</span>
+          <span class="block text-caption text-neutral-500">One per line</span>
+          <textarea name="highlights" rows="3" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2">${escapeHtml(listing.highlights ?? "")}</textarea>
+        </label>
+        <label class="block text-body-sm">
+          <span class="font-medium">Features</span>
+          <span class="block text-caption text-neutral-500">One per line</span>
+          <textarea name="features" rows="3" class="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2">${escapeHtml(listing.features ?? "")}</textarea>
+        </label>
+        <p data-listing-copy-word-count class="text-caption text-neutral-500 m-0">${formatProductCopyHint(
+          totalProductCopyWords({
+            shortDescription: listing.shortDescription,
+            highlights: listing.highlights,
+            features: listing.features,
+          }),
+        )}</p>
+        <div>
+          <p class="text-body-sm font-semibold m-0 mb-2">Product photos (up to 4)</p>
+          <div class="grid gap-3 sm:grid-cols-2" data-listing-gallery data-sku="${sku}">
+            ${IMAGE_SLOTS.map((slot) => gallerySlotHtml(listing, slot)).join("")}
+          </div>
         </div>
         <p class="text-caption text-neutral-500 m-0">Current SKU: <code>${sku}</code></p>
         <p data-listing-edit-error class="hidden text-body-sm text-danger-600 m-0" role="alert"></p>
@@ -145,8 +205,8 @@ function renderListingsTable(listings: MerchantListingRow[]): string {
     </tbody></table></div>`;
 }
 
-function setPhotoStatus(cell: HTMLElement, message: string, tone: "neutral" | "success" | "error"): void {
-  const status = cell.querySelector("[data-listing-photo-status]");
+function setPhotoStatus(slotEl: HTMLElement, message: string, tone: "neutral" | "success" | "error"): void {
+  const status = slotEl.querySelector("[data-listing-photo-status]");
   if (!(status instanceof HTMLElement)) return;
   status.textContent = message;
   status.classList.remove("text-neutral-500", "text-success-600", "text-danger-600");
@@ -155,68 +215,160 @@ function setPhotoStatus(cell: HTMLElement, message: string, tone: "neutral" | "s
   else status.classList.add("text-neutral-500");
 }
 
-function updatePhotoThumb(cell: HTMLElement, imageUrl: string): void {
-  const existing = cell.querySelector(".listing-photo-thumb");
-  const img = document.createElement("img");
-  img.src = imageUrl;
-  img.alt = "";
-  img.width = 48;
-  img.height = 48;
-  img.className =
-    "listing-photo-thumb h-12 w-12 shrink-0 rounded-lg border border-neutral-200 object-cover";
-  existing?.replaceWith(img);
+function updateGalleryPreview(slotEl: HTMLElement, imageUrl: string | null): void {
+  const preview = slotEl.querySelector<HTMLImageElement>("[data-listing-gallery-preview]");
+  const removeBtn = slotEl.querySelector<HTMLButtonElement>("[data-listing-photo-remove]");
+  if (preview) {
+    if (imageUrl) {
+      preview.src = imageUrl;
+      preview.classList.remove("hidden");
+    } else {
+      preview.src = "";
+      preview.classList.add("hidden");
+    }
+  }
+  if (imageUrl && !removeBtn) {
+    const sku = slotEl.dataset.sku ?? "";
+    const slot = slotEl.dataset.slot ?? "0";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.listingPhotoRemove = "";
+    btn.dataset.sku = sku;
+    btn.dataset.slot = slot;
+    btn.className =
+      "mt-2 rounded-lg border border-danger-600/30 bg-danger-50 px-2 py-1 text-caption font-semibold text-danger-600";
+    btn.textContent = "Remove";
+    preview?.insertAdjacentElement("afterend", btn);
+  } else if (!imageUrl && removeBtn) {
+    removeBtn.remove();
+  }
+}
 
-  const label = cell.querySelector("[data-listing-photo-label]");
-  if (label) label.textContent = "Change photo";
+function updateCoverThumb(cell: HTMLElement, imageUrl: string | null, count: number): void {
+  const existing = cell.querySelector(".listing-photo-thumb");
+  if (imageUrl) {
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.alt = "";
+    img.width = 48;
+    img.height = 48;
+    img.className =
+      "listing-photo-thumb h-12 w-12 shrink-0 rounded-lg border border-neutral-200 object-cover";
+    existing?.replaceWith(img);
+  } else {
+    const span = document.createElement("span");
+    span.className =
+      "listing-photo-thumb flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 text-caption text-neutral-400";
+    span.setAttribute("aria-hidden", "true");
+    span.textContent = "—";
+    existing?.replaceWith(span);
+  }
+  const note = cell.querySelector("p");
+  if (note) {
+    note.textContent = count ? `${count} photo${count === 1 ? "" : "s"} — edit to manage gallery` : "No photos — edit to manage gallery";
+  }
 }
 
 async function uploadListingPhoto(
   apiBase: string,
   sku: string,
+  slot: number,
   file: File,
-  cell: HTMLElement,
+  slotEl: HTMLElement,
+  photoCellEl: HTMLElement | null,
 ): Promise<void> {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    setPhotoStatus(cell, "Use JPEG, PNG, or WebP.", "error");
+    setPhotoStatus(slotEl, "Use JPEG, PNG, or WebP.", "error");
     return;
   }
   if (file.size <= 0) {
-    setPhotoStatus(cell, "File is empty.", "error");
+    setPhotoStatus(slotEl, "File is empty.", "error");
     return;
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    setPhotoStatus(cell, "Image must be 2 MB or smaller.", "error");
+    setPhotoStatus(slotEl, "Image must be 2 MB or smaller.", "error");
     return;
   }
 
-  setPhotoStatus(cell, "Uploading…", "neutral");
-  const input = cell.querySelector<HTMLInputElement>("[data-listing-photo-input]");
+  setPhotoStatus(slotEl, "Uploading…", "neutral");
+  const input = slotEl.querySelector<HTMLInputElement>("[data-listing-photo-input]");
   if (input) input.disabled = true;
 
   try {
     const form = new FormData();
     form.append("image", file);
-    const res = await fetch(`${apiBase}/merchant/listings/${encodeURIComponent(sku)}/image`, {
-      method: "POST",
-      headers: merchantAuthHeaders(),
-      body: form,
-    });
+    const res = await fetch(
+      `${apiBase}/merchant/listings/${encodeURIComponent(sku)}/image?slot=${slot}`,
+      {
+        method: "POST",
+        headers: await merchantAuthHeaders(),
+        body: form,
+      },
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(typeof data.error === "string" ? data.error : "Upload failed");
     }
-    if (typeof data.imageUrl === "string") {
-      updatePhotoThumb(cell, data.imageUrl);
+    const imageUrls = Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : [];
+    const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : imageUrls[slot] ?? null;
+    updateGalleryPreview(slotEl, imageUrl);
+    if (photoCellEl) {
+      updateCoverThumb(photoCellEl, imageUrls[0] ?? imageUrl, imageUrls.filter(Boolean).length);
     }
-    setPhotoStatus(cell, "Photo saved.", "success");
+    setPhotoStatus(slotEl, "Photo saved.", "success");
   } catch (err) {
-    setPhotoStatus(cell, err instanceof Error ? err.message : "Upload failed", "error");
+    setPhotoStatus(slotEl, err instanceof Error ? err.message : "Upload failed", "error");
   } finally {
     if (input) {
       input.disabled = false;
       input.value = "";
     }
   }
+}
+
+async function removeListingPhoto(
+  apiBase: string,
+  sku: string,
+  slot: number,
+  slotEl: HTMLElement,
+  photoCellEl: HTMLElement | null,
+): Promise<void> {
+  setPhotoStatus(slotEl, "Removing…", "neutral");
+  try {
+    const res = await fetch(
+      `${apiBase}/merchant/listings/${encodeURIComponent(sku)}/images/${slot}`,
+      {
+        method: "DELETE",
+        headers: await merchantHeaders(),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(typeof data.error === "string" ? data.error : "Remove failed");
+    }
+    const imageUrls = Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : [];
+    updateGalleryPreview(slotEl, imageUrls[slot] ?? null);
+    if (photoCellEl) {
+      updateCoverThumb(photoCellEl, imageUrls[0] ?? null, imageUrls.filter(Boolean).length);
+    }
+    setPhotoStatus(slotEl, "Photo removed.", "success");
+  } catch (err) {
+    setPhotoStatus(slotEl, err instanceof Error ? err.message : "Remove failed", "error");
+  }
+}
+
+function updateEditCopyWordCount(form: HTMLFormElement): void {
+  const counter = form.querySelector<HTMLElement>("[data-listing-copy-word-count]");
+  if (!counter) return;
+  const formData = new FormData(form);
+  const total = totalProductCopyWords({
+    shortDescription: String(formData.get("shortDescription") ?? ""),
+    highlights: String(formData.get("highlights") ?? ""),
+    features: String(formData.get("features") ?? ""),
+  });
+  counter.textContent = formatProductCopyHint(total);
+  counter.classList.toggle("text-danger-600", total > 500);
+  counter.classList.toggle("text-neutral-500", total <= 500);
 }
 
 function closeAllEditRows(container: HTMLElement): void {
@@ -250,17 +402,44 @@ export function setupMerchantListings(apiBase = API_BASE): void {
     if (!(target instanceof HTMLInputElement)) return;
     if (!target.matches("[data-listing-photo-input]")) return;
     const sku = target.dataset.sku?.trim();
-    if (!sku) return;
+    const slotRaw = target.dataset.slot;
+    if (!sku || slotRaw == null) return;
+    const slot = Number(slotRaw);
+    if (!Number.isInteger(slot) || slot < 0 || slot > 3) return;
     const file = target.files?.[0];
     if (!file) return;
-    const cell = target.closest<HTMLElement>("[data-listing-photo-cell]");
-    if (!cell) return;
-    void uploadListingPhoto(apiBase, sku, file, cell);
+    const slotEl = target.closest<HTMLElement>("[data-listing-gallery-slot]");
+    if (!slotEl) return;
+    const photoCellEl = list?.querySelector<HTMLElement>(
+      `[data-listing-photo-cell][data-sku="${CSS.escape(sku)}"]`,
+    );
+    void uploadListingPhoto(apiBase, sku, slot, file, slotEl, photoCellEl ?? null);
+  });
+
+  list?.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLTextAreaElement)) return;
+    const form = target.closest<HTMLFormElement>("[data-listing-edit-form]");
+    if (!form) return;
+    updateEditCopyWordCount(form);
   });
 
   list?.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const removeBtn = target.closest<HTMLButtonElement>("[data-listing-photo-remove]");
+    if (removeBtn?.dataset.sku && removeBtn.dataset.slot != null) {
+      const sku = removeBtn.dataset.sku;
+      const slot = Number(removeBtn.dataset.slot);
+      const slotEl = removeBtn.closest<HTMLElement>("[data-listing-gallery-slot]");
+      if (!slotEl || !Number.isInteger(slot)) return;
+      const photoCellEl = list?.querySelector<HTMLElement>(
+        `[data-listing-photo-cell][data-sku="${CSS.escape(sku)}"]`,
+      );
+      void removeListingPhoto(apiBase, sku, slot, slotEl, photoCellEl ?? null);
+      return;
+    }
 
     const editOpen = target.closest<HTMLButtonElement>("[data-listing-edit-open]");
     if (editOpen?.dataset.sku && list) {
@@ -288,7 +467,7 @@ export function setupMerchantListings(apiBase = API_BASE): void {
         try {
           const res = await fetch(`${apiBase}/merchant/listings/${encodeURIComponent(sku)}`, {
             method: "DELETE",
-            headers: merchantHeaders(),
+            headers: await merchantHeaders(),
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error ?? "Delete failed");
@@ -320,17 +499,36 @@ export function setupMerchantListings(apiBase = API_BASE): void {
     const category = String(formData.get("category") ?? "").trim();
     const unitPrice = String(formData.get("unitPrice") ?? "").trim();
     const skuBase = String(formData.get("skuBase") ?? "").trim();
+    const shortDescription = String(formData.get("shortDescription") ?? "").trim();
+    const highlights = String(formData.get("highlights") ?? "").trim();
+    const features = String(formData.get("features") ?? "").trim();
+
+    const copyErr = validateProductCopy({ shortDescription, highlights, features });
+    if (copyErr) {
+      if (errorBox) {
+        errorBox.textContent = copyErr;
+        errorBox.classList.remove("hidden");
+      }
+      return;
+    }
 
     void (async () => {
       try {
-        const body: Record<string, string> = { name, category, unitPrice };
+        const body: Record<string, string> = {
+          name,
+          category,
+          unitPrice,
+          shortDescription,
+          highlights,
+          features,
+        };
         if (skuBase && skuBase !== stripListingSkuTimestamp(sku)) {
           body.skuBase = skuBase;
         }
 
         const res = await fetch(`${apiBase}/merchant/listings/${encodeURIComponent(sku)}`, {
           method: "PATCH",
-          headers: merchantHeaders(),
+          headers: await merchantHeaders(),
           body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
@@ -351,7 +549,7 @@ export function setupMerchantListings(apiBase = API_BASE): void {
     list.innerHTML = "<p class='text-neutral-500 m-0'>Loading…</p>";
 
     try {
-      const res = await fetch(`${apiBase}/merchant/listings`, { headers: merchantHeaders() });
+      const res = await fetch(`${apiBase}/merchant/listings`, { headers: await merchantHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Load failed");
       renderListings((data.listings ?? []) as MerchantListingRow[]);

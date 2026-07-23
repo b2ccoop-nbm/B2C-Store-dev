@@ -25,12 +25,38 @@ function persistMemberEmail(email: string): void {
 }
 
 export async function getFirebaseIdToken(): Promise<string | null> {
-  if (!auth?.currentUser) return null;
+  const user = await waitForMemberAuth();
+  if (!user) return null;
   try {
-    return await auth.currentUser.getIdToken();
+    return await user.getIdToken();
   } catch {
     return null;
   }
+}
+
+/** Wait for Firebase to restore session on page load before merchant API calls. */
+export function waitForMemberAuth(timeoutMs = 5000): Promise<User | null> {
+  if (!auth) return Promise.resolve(null);
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (user: User | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(user);
+    };
+
+    const unsub = onAuthStateChanged(auth!, (user) => {
+      unsub();
+      finish(user);
+    });
+
+    window.setTimeout(() => {
+      unsub();
+      finish(auth?.currentUser ?? null);
+    }, timeoutMs);
+  });
 }
 
 export function subscribeMemberAuth(onChange: (user: User | null) => void): () => void {

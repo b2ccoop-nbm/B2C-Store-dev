@@ -1,6 +1,6 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { StoreDatabase } from "../db/client";
-import { vendors } from "../db/schema";
+import { sellerApplications, vendors } from "../db/schema";
 import { generateVendorToken, hashVendorToken } from "../lib/vendor-token";
 
 export class VendorError extends Error {
@@ -89,6 +89,72 @@ export async function getVendorByOwnerEmail(db: StoreDatabase, email: string) {
   const vendor = rows[0];
   if (!vendor || !vendor.isActive) return null;
   return vendor;
+}
+
+/** Resolve active vendor for a signed-in coop member (SSO — no access token). */
+export async function resolveMerchantVendorForFirebaseUser(
+  db: StoreDatabase,
+  firebaseUid: string,
+  email: string,
+) {
+  const byUid = await getVendorByFirebaseUid(db, firebaseUid);
+  if (byUid) {
+    return { code: byUid.code, slug: byUid.slug, name: byUid.name };
+  }
+
+  const approvedApp = await db
+    .select({ vendorId: sellerApplications.vendorId })
+    .from(sellerApplications)
+    .where(
+      and(
+        eq(sellerApplications.applicantFirebaseUid, firebaseUid.trim()),
+        eq(sellerApplications.status, "APPROVED"),
+      ),
+    )
+    .orderBy(desc(sellerApplications.updatedAt))
+    .limit(1);
+
+  const vendorId = approvedApp[0]?.vendorId;
+  if (vendorId) {
+    const rows = await db
+      .select({
+        id: vendors.id,
+        code: vendors.code,
+        slug: vendors.slug,
+        name: vendors.name,
+        ownerEmail: vendors.ownerEmail,
+        firebaseUid: vendors.firebaseUid,
+        isActive: vendors.isActive,
+      })
+      .from(vendors)
+      .where(eq(vendors.id, vendorId))
+      .limit(1);
+    const vendor = rows[0];
+    if (vendor?.isActive) {
+      if (!vendor.firebaseUid) {
+        await bindVendorFirebaseUid(db, vendor.code, firebaseUid, email);
+      }
+      return { code: vendor.code, slug: vendor.slug, name: vendor.name };
+    }
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const unlinked = await db
+    .select({
+      code: vendors.code,
+      slug: vendors.slug,
+      name: vendors.name,
+    })
+    .from(vendors)
+    .where(and(eq(vendors.ownerEmail, normalizedEmail), isNull(vendors.firebaseUid), eq(vendors.isActive, true)));
+
+  if (unlinked.length === 1) {
+    const vendor = unlinked[0]!;
+    await bindVendorFirebaseUid(db, vendor.code, firebaseUid, email);
+    return vendor;
+  }
+
+  return null;
 }
 
 export async function bindVendorFirebaseUid(

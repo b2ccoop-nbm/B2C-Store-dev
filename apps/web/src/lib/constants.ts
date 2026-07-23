@@ -28,5 +28,14 @@ export const TRUST_COPY = {
 export const WEBAPP_MEMBER_URL =
   import.meta.env.PUBLIC_WEBAPP_URL ?? "https://b2ccoop.com";
 
+/** Public storefront base URL — share with merchants and shoppers. */
+export const STORE_PUBLIC_URL = (
+  import.meta.env.PUBLIC_STORE_URL ?? "https://store.b2ccoop.com"
+).replace(/\/$/, "");
+
+export function storefrontPublicUrl(slug: string): string {
+  return `${STORE_PUBLIC_URL}/store/${encodeURIComponent(slug)}`;
+}
+
 /** Alias — main B2CCoop.com landing (same as member portal root). */
 export const COOP_HOME_URL = WEBAPP_MEMBER_URL;

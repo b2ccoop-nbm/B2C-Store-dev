@@ -56,13 +56,15 @@ export async function resolveMemberByEmail(
   env: WorkerEnv,
 ): Promise<MemberResolve> {
   const normalized = normalizeEmail(email);
-  const dev = DEV_SHOPPERS.find((s) => normalizeEmail(s.email) === normalized);
-  if (dev) {
-    return {
-      participantId: dev.participantId ?? null,
-      memberIdNo: dev.memberIdNo,
-      displayName: dev.displayName,
-    };
+  if (env.ENVIRONMENT !== "production") {
+    const dev = DEV_SHOPPERS.find((s) => normalizeEmail(s.email) === normalized);
+    if (dev) {
+      return {
+        participantId: dev.participantId ?? null,
+        memberIdNo: dev.memberIdNo,
+        displayName: dev.displayName,
+      };
+    }
   }
 
   const fromWebApp = await resolveFromWebApp(normalized, env);

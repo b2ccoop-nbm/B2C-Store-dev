@@ -1,10 +1,71 @@
 import { API_BASE } from "@/lib/api";
 import { saveApplicationStatusToken } from "@/lib/application-status";
 import { fetchSellerApplication, type SellerApplication } from "@/lib/merchant-onboarding";
-import { bindVendorToMember, getFirebaseIdToken, getStoredMemberEmail } from "@/lib/member-auth";
-import { getMerchantEmail, saveMerchantSession, validateMerchantToken } from "@/lib/merchant-session";
+import { bindVendorToMember, getFirebaseIdToken, getStoredMemberEmail, subscribeMemberAuth } from "@/lib/member-auth";
+import { auth } from "@/lib/firebase";
+import {
+  getMerchantEmail,
+  hasMerchantAccess,
+  saveMerchantSession,
+  validateMerchantSession,
+} from "@/lib/merchant-session";
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function getSignedInMemberEmail(): string {
+  return auth?.currentUser?.email?.trim().toLowerCase() ?? getStoredMemberEmail().trim().toLowerCase();
+}
+
+function getApplicantEmailFieldValue(): string {
+  const el = document.getElementById("applicantEmail");
+  if (el instanceof HTMLInputElement) {
+    return normalizeEmail(el.value);
+  }
+  return "";
+}
+
+function updateApplicationEmailWarning(): void {
+  const banner = document.getElementById("application-email-signin-banner");
+  if (!banner) return;
+
+  const signedInEmail = getSignedInMemberEmail();
+  const applicantEmail = getApplicantEmailFieldValue();
+
+  if (!signedInEmail) {
+    banner.className =
+      "rounded-lg border px-4 py-3 border-neutral-200 bg-neutral-50 text-neutral-700";
+    banner.innerHTML = `<p class="text-body-sm font-semibold m-0">Sign in before you apply</p>
+      <p class="text-body-sm mt-1 m-0">Open <a href="/profile" class="text-brand-600 font-semibold">Your profile</a> and sign in with the email you will use on this form. That links your store for one-click seller access after approval.</p>`;
+    banner.classList.remove("hidden");
+    return;
+  }
+
+  if (!applicantEmail) {
+    banner.classList.add("hidden");
+    banner.innerHTML = "";
+    return;
+  }
+
+  if (signedInEmail === applicantEmail) {
+    banner.className =
+      "rounded-lg border px-4 py-3 border-success-200 bg-success-50 text-success-800";
+    banner.innerHTML = `<p class="text-body-sm font-semibold m-0">Email matches your sign-in</p>
+      <p class="text-body-sm mt-1 m-0">Signed in as <strong>${signedInEmail}</strong>. After HQ approves, switch to Merchant in the header — no access token needed.</p>`;
+    banner.classList.remove("hidden");
+    return;
+  }
+
+  banner.className =
+    "rounded-lg border px-4 py-3 border-amber-300 bg-amber-50 text-amber-950";
+  banner.innerHTML = `<p class="text-body-sm font-semibold m-0">Email mismatch — seller sign-in may not work</p>
+    <p class="text-body-sm mt-1 m-0">You are signed in as <strong>${signedInEmail}</strong>, but this application uses <strong>${applicantEmail}</strong>.</p>
+    <p class="text-body-sm mt-2 m-0">For passwordless seller access, use the <strong>same email</strong> on both. Either change the business email above to <strong>${signedInEmail}</strong>, or sign in on <a href="/profile" class="text-brand-700 font-semibold">Your profile</a> with <strong>${applicantEmail}</strong>. Otherwise HQ must give you an access token after approval.</p>`;
+  banner.classList.remove("hidden");
+}
 
 function syncEmailFields(email: string): void {
   for (const id of ["applicantEmail", "check-email", "merchant-email"]) {
@@ -34,19 +95,38 @@ function getTurnstileToken(): string | undefined {
   return el instanceof HTMLInputElement ? el.value.trim() || undefined : undefined;
 }
 
-function updateCredentialsVisibility(app: SellerApplication | null): void {
+async function updateCredentialsVisibility(app: SellerApplication | null, apiBase: string): Promise<void> {
   const card = document.getElementById("merchant-credentials-card");
-  if (!card) return;
+  const ssoCard = document.getElementById("merchant-sso-card");
+  if (!card || !ssoCard) return;
 
-  if (app?.status === "APPROVED" && app.vendor) {
-    card.classList.remove("hidden");
-    const vendorInput = document.getElementById("merchant-vendor");
-    if (vendorInput instanceof HTMLInputElement && !vendorInput.value) {
-      vendorInput.value = app.vendor.code;
-    }
-  } else {
+  if (app?.status !== "APPROVED" || !app.vendor) {
     card.classList.add("hidden");
+    ssoCard.classList.add("hidden");
+    return;
   }
+
+  ssoCard.classList.remove("hidden");
+  const vendorInput = document.getElementById("merchant-vendor");
+  if (vendorInput instanceof HTMLInputElement) {
+    vendorInput.value = app.vendor.code;
+  }
+
+  const ready = await hasMerchantAccess(apiBase);
+  const ssoMsg = document.getElementById("merchant-sso-msg");
+  if (ssoMsg) {
+    if (ready) {
+      ssoMsg.innerHTML = `Signed in as <strong>${app.vendor.name}</strong>. Open <a href="/sell" class="text-brand-600 font-semibold">Seller dashboard →</a> or switch persona to Merchant in the header.`;
+      ssoMsg.className = "text-body-sm text-success-700 mt-2 m-0";
+    } else {
+      ssoMsg.innerHTML =
+        'Sign in on <a href="/profile" class="text-brand-600 font-semibold">Your profile</a> with the same email you used to apply. No access token needed.';
+      ssoMsg.className = "text-body-sm text-neutral-600 mt-2 m-0";
+    }
+    ssoMsg.classList.remove("hidden");
+  }
+
+  card.classList.remove("hidden");
 }
 
 function renderStatusHtml(app: SellerApplication): string {
@@ -61,7 +141,7 @@ function renderStatusHtml(app: SellerApplication): string {
   if (app.status === "APPROVED" && vendor) {
     html += `<p class="text-body-sm mt-3 m-0">Your seller code: <code class="font-mono">${vendor.code}</code></p>
       <p class="text-body-sm mt-1 m-0"><a href="/store/${vendor.slug}" class="text-brand-600 font-semibold">View your storefront →</a></p>
-      <p class="text-caption text-neutral-500 mt-2 m-0">Enter your access token below to manage listings and orders on this device.</p>`;
+      <p class="text-caption text-neutral-500 mt-2 m-0">Sign in on Your profile with your member account to manage listings and orders — no access token required.</p>`;
   } else if (app.status === "PENDING") {
     html += `<p class="text-body-sm mt-2 m-0">Coop officers are reviewing your application. You'll receive an access token once approved.</p>`;
   } else if (app.status === "REJECTED") {
@@ -83,6 +163,7 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
 
   const storedEmail = getMerchantEmail() || getStoredMemberEmail();
   if (storedEmail) syncEmailFields(storedEmail);
+  updateApplicationEmailWarning();
 
   void getFirebaseIdToken().then((token) => {
     if (token) void refreshStatus({ scroll: false });
@@ -107,12 +188,12 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
       if (!app) {
         statusPanel.innerHTML =
           "<p class='text-body m-0'>No application on file. Submit the form above to apply, or sign in with the email you used.</p>";
-        updateCredentialsVisibility(null);
+        updateCredentialsVisibility(null, apiBase);
         return;
       }
 
       statusPanel.innerHTML = renderStatusHtml(app);
-      updateCredentialsVisibility(app);
+      await updateCredentialsVisibility(app, apiBase);
 
       if (stepperEl) {
         const { loadOnboardingContext, renderOnboardingStepper: render } = await import(
@@ -155,6 +236,16 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
       payload.firebaseIdToken = firebaseIdToken;
     }
 
+    const signedInEmail = getSignedInMemberEmail();
+    const applicantEmail = normalizeEmail(String(payload.applicantEmail));
+    if (signedInEmail && applicantEmail && signedInEmail !== applicantEmail && errorEl) {
+      errorEl.innerHTML = `Business email (<strong>${applicantEmail}</strong>) does not match your sign-in (<strong>${signedInEmail}</strong>). Fix the email above or sign in with the matching account — otherwise you will need an access token from HQ after approval.`;
+      errorEl.classList.remove("hidden");
+      errorEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    errorEl?.classList.add("hidden");
+
     try {
       const res = await fetch(`${apiBase}/seller/applications`, {
         method: "POST",
@@ -196,15 +287,24 @@ export function setupSellerApplicationForm(apiBase = API_BASE): void {
 
   for (const id of ["applicantEmail", "check-email", "merchant-email"]) {
     const el = document.getElementById(id);
+    el?.addEventListener("input", () => {
+      updateApplicationEmailWarning();
+    });
     el?.addEventListener("change", () => {
       const email = getSharedEmail();
       if (email) syncEmailFields(email);
+      updateApplicationEmailWarning();
     });
   }
 
   if (storedEmail) {
     void refreshStatus({ email: storedEmail });
   }
+
+  subscribeMemberAuth(() => {
+    updateApplicationEmailWarning();
+    void refreshStatus({ scroll: false });
+  });
 }
 
 export function setupMerchantCredentials(apiBase = API_BASE): void {
@@ -234,14 +334,14 @@ export function setupMerchantCredentials(apiBase = API_BASE): void {
     }
 
     try {
-      const vendor = await validateMerchantToken(apiBase, token);
+      const vendor = await validateMerchantSession(apiBase, token);
       if (vendorInput instanceof HTMLInputElement) {
         vendorInput.value = vendor.code;
       }
       saveMerchantSession(vendor.code, token, email || undefined);
       await bindVendorToMember(apiBase, vendor.code);
       if (msg) {
-        msg.textContent = `Saved for ${vendor.name} — you can use Listings, New listing, and Order queue.`;
+        msg.textContent = `Token saved for ${vendor.name} (legacy fallback). Member sign-in is preferred.`;
         msg.className = "text-body-sm text-success-600 mt-2 m-0";
         msg.classList.remove("hidden");
       }

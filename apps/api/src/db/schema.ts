@@ -141,8 +141,13 @@ export const products = pgTable(
     cogsPerUnit: numeric("cogs_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     patronagePerUnit: numeric("patronage_per_unit", { precision: 14, scale: 2 }).notNull().default("0"),
     currency: varchar("currency", { length: 3 }).notNull().default("PHP"),
-    /** Public URL for product photo (R2). */
+    /** Public URL for product photo (R2). Primary image — kept in sync with imageUrls[0]. */
     imageUrl: varchar("image_url", { length: 512 }),
+    /** Up to 4 gallery image URLs (JSON array). */
+    imageUrls: jsonb("image_urls").notNull().default([]),
+    shortDescription: text("short_description"),
+    highlights: text("highlights"),
+    features: text("features"),
     listingFeePercent: numeric("listing_fee_percent", { precision: 5, scale: 2 }),
     deliveryPerItem: numeric("delivery_per_item", { precision: 14, scale: 2 }),
     deliveryTier: deliveryTierEnum("delivery_tier").notNull().default("standard"),

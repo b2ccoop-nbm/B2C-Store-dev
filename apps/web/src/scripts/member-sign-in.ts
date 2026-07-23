@@ -45,7 +45,7 @@ export function setupMemberSignIn(apiBase = API_BASE): void {
       }
       const data = await res.json();
       if (data.isApprovedVendor && data.vendor) {
-        merchantHint.innerHTML = `You have an approved store: <strong>${data.vendor.name}</strong>. <a href="/sell" class="text-brand-600 font-semibold">Open seller dashboard →</a>`;
+        merchantHint.innerHTML = `You have an approved store: <strong>${data.vendor.name}</strong>. Switch to <strong>Merchant</strong> in the header or <a href="/sell" class="text-brand-600 font-semibold">open seller dashboard →</a>`;
         merchantHint.classList.remove("hidden");
       } else if (data.application?.status === "PENDING") {
         merchantHint.textContent = "Your seller application is under review.";

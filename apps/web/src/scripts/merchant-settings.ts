@@ -1,5 +1,6 @@
 import type { MerchantProfile } from "@b2ccoop/store-shared";
 import { API_BASE } from "@/lib/api";
+import { storefrontPublicUrl } from "@/lib/constants";
 import { merchantHeaders } from "@/lib/merchant-session";
 
 export function setupMerchantSettings(apiBase = API_BASE): void {
@@ -78,8 +79,9 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     if (vendorCodeEl) vendorCodeEl.textContent = profile.code;
     if (sellerKindEl) sellerKindEl.textContent = profile.sellerKind;
     if (storefrontLink instanceof HTMLAnchorElement) {
-      storefrontLink.href = `/store/${profile.slug}`;
-      storefrontLink.textContent = `/store/${profile.slug}`;
+      const shareUrl = storefrontPublicUrl(profile.slug);
+      storefrontLink.href = shareUrl;
+      storefrontLink.textContent = shareUrl;
     }
 
     updatePickupVisibility();
@@ -100,7 +102,7 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
 
   async function loadProfile() {
     try {
-      const res = await fetch(`${apiBase}/merchant/profile`, { headers: merchantHeaders() });
+      const res = await fetch(`${apiBase}/merchant/profile`, { headers: await merchantHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not load profile");
 
@@ -145,7 +147,7 @@ export function setupMerchantSettings(apiBase = API_BASE): void {
     try {
       const res = await fetch(`${apiBase}/merchant/profile`, {
         method: "PATCH",
-        headers: { ...merchantHeaders(), "Content-Type": "application/json" },
+        headers: { ...(await merchantHeaders()), "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

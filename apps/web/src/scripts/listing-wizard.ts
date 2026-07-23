@@ -8,10 +8,17 @@ import {
   type PlatformCommerceSettings,
   type SellerKind,
 } from "@b2ccoop/store-shared";
+import { subscribeMemberAuth } from "@/lib/member-auth";
 import { API_BASE } from "@/lib/api";
-import { getMerchantVendorCode, merchantAuthHeaders, merchantHeaders } from "@/lib/merchant-session";
+import { hasMerchantAccess, merchantAuthHeaders, merchantHeaders } from "@/lib/merchant-session";
+import {
+  formatProductCopyHint,
+  totalProductCopyWords,
+  validateProductCopy,
+} from "@/lib/product-copy-ui";
 
 const DRAFT_KEY = "b2c_listing_wizard_draft";
+const IMAGE_SLOTS = [0, 1, 2, 3] as const;
 
 type Draft = {
   skuPrefix: string;
@@ -22,6 +29,9 @@ type Draft = {
   deliveryTier: DeliveryTier;
   deliveryPerItem: string;
   patronageEligible: boolean;
+  shortDescription: string;
+  highlights: string;
+  features: string;
 };
 
 type MerchantContext = {
@@ -44,6 +54,9 @@ function loadDraft(): Draft {
         deliveryTier: parsed.deliveryTier ?? "standard",
         deliveryPerItem: parsed.deliveryPerItem ?? "",
         patronageEligible: parsed.patronageEligible ?? true,
+        shortDescription: parsed.shortDescription ?? "",
+        highlights: parsed.highlights ?? "",
+        features: parsed.features ?? "",
       };
     }
   } catch {
@@ -58,6 +71,9 @@ function loadDraft(): Draft {
     deliveryTier: "standard",
     deliveryPerItem: "",
     patronageEligible: true,
+    shortDescription: "",
+    highlights: "",
+    features: "",
   };
 }
 
@@ -80,8 +96,8 @@ export function setupListingWizard(apiBase = API_BASE): void {
   let step = 1;
   const totalSteps = 2;
   const draft = loadDraft();
-  let imageFile: File | null = null;
-  let imagePreviewUrl: string | null = null;
+  const imageFiles: Array<File | null> = [null, null, null, null];
+  const imagePreviewUrls: Array<string | null> = [null, null, null, null];
   let platformSettings: PlatformCommerceSettings | null = null;
   let merchantContext: MerchantContext | null = null;
 
@@ -97,8 +113,13 @@ export function setupListingWizard(apiBase = API_BASE): void {
   const splitPreviewEl = document.getElementById("listing-split-preview");
   const skuPreviewEl = document.getElementById("listing-sku-preview");
   const partnerFeeField = document.getElementById("listing-fee-field");
-  const imageInput = document.getElementById("listing-image") as HTMLInputElement | null;
-  const imagePreview = document.getElementById("listing-image-preview") as HTMLImageElement | null;
+  const copyWordCountEl = document.getElementById("listing-copy-word-count");
+  const imageInputs = IMAGE_SLOTS.map(
+    (slot) => document.getElementById(`listing-image-${slot}`) as HTMLInputElement | null,
+  );
+  const imagePreviews = IMAGE_SLOTS.map(
+    (slot) => document.getElementById(`listing-image-preview-${slot}`) as HTMLImageElement | null,
+  );
 
   const fields = {
     skuPrefix: document.getElementById("listing-sku-prefix") as HTMLInputElement | null,
@@ -109,6 +130,9 @@ export function setupListingWizard(apiBase = API_BASE): void {
     deliveryTier: document.getElementById("listing-delivery-tier") as HTMLSelectElement | null,
     deliveryPerItem: document.getElementById("listing-delivery-override") as HTMLInputElement | null,
     patronageEligible: document.getElementById("listing-patronage-eligible") as HTMLInputElement | null,
+    shortDescription: document.getElementById("listing-short-description") as HTMLTextAreaElement | null,
+    highlights: document.getElementById("listing-highlights") as HTMLTextAreaElement | null,
+    features: document.getElementById("listing-features") as HTMLTextAreaElement | null,
   };
 
   if (fields.skuPrefix) fields.skuPrefix.value = draft.skuPrefix;
@@ -119,6 +143,9 @@ export function setupListingWizard(apiBase = API_BASE): void {
   if (fields.deliveryTier) fields.deliveryTier.value = draft.deliveryTier;
   if (fields.deliveryPerItem) fields.deliveryPerItem.value = draft.deliveryPerItem;
   if (fields.patronageEligible) fields.patronageEligible.checked = draft.patronageEligible;
+  if (fields.shortDescription) fields.shortDescription.value = draft.shortDescription;
+  if (fields.highlights) fields.highlights.value = draft.highlights;
+  if (fields.features) fields.features.value = draft.features;
 
   function readDraft(): Draft {
     return {
@@ -130,7 +157,19 @@ export function setupListingWizard(apiBase = API_BASE): void {
       deliveryTier: (fields.deliveryTier?.value ?? "standard") as DeliveryTier,
       deliveryPerItem: fields.deliveryPerItem?.value.trim() ?? "",
       patronageEligible: fields.patronageEligible?.checked ?? true,
+      shortDescription: fields.shortDescription?.value.trim() ?? "",
+      highlights: fields.highlights?.value.trim() ?? "",
+      features: fields.features?.value.trim() ?? "",
     };
+  }
+
+  function updateCopyWordCount(): void {
+    if (!copyWordCountEl) return;
+    const d = readDraft();
+    const total = totalProductCopyWords(d);
+    copyWordCountEl.textContent = formatProductCopyHint(total);
+    copyWordCountEl.classList.toggle("text-danger-600", total > 500);
+    copyWordCountEl.classList.toggle("text-neutral-500", total <= 500);
   }
 
   function updatePartnerFeeVisibility(): void {
@@ -198,16 +237,21 @@ export function setupListingWizard(apiBase = API_BASE): void {
     skuPreviewEl.textContent = `SKU preview: ${previewSku(d.name, d.skuPrefix)} (final suffix assigned on save)`;
   }
 
-  function clearImagePreview(): void {
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
-      imagePreviewUrl = null;
+  function clearImagePreview(slot: number): void {
+    if (imagePreviewUrls[slot]) {
+      URL.revokeObjectURL(imagePreviewUrls[slot]!);
+      imagePreviewUrls[slot] = null;
     }
-    imageFile = null;
-    if (imagePreview) {
-      imagePreview.src = "";
-      imagePreview.classList.add("hidden");
+    imageFiles[slot] = null;
+    const preview = imagePreviews[slot];
+    if (preview) {
+      preview.src = "";
+      preview.classList.add("hidden");
     }
+  }
+
+  function clearAllImagePreviews(): void {
+    for (const slot of IMAGE_SLOTS) clearImagePreview(slot);
   }
 
   for (const field of [
@@ -218,45 +262,54 @@ export function setupListingWizard(apiBase = API_BASE): void {
     fields.deliveryTier,
     fields.deliveryPerItem,
     fields.patronageEligible,
+    fields.shortDescription,
+    fields.highlights,
+    fields.features,
   ]) {
     field?.addEventListener("input", () => {
       updateSkuPreview();
       updateSplitPreview();
+      updateCopyWordCount();
     });
     field?.addEventListener("change", () => {
       updateSkuPreview();
       updateSplitPreview();
+      updateCopyWordCount();
     });
   }
 
-  imageInput?.addEventListener("change", () => {
-    clearImagePreview();
-    const file = imageInput.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      if (errorEl) {
-        errorEl.textContent = "Image must be 2 MB or smaller.";
-        errorEl.classList.remove("hidden");
+  for (const slot of IMAGE_SLOTS) {
+    imageInputs[slot]?.addEventListener("change", () => {
+      clearImagePreview(slot);
+      const input = imageInputs[slot];
+      const file = input?.files?.[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        if (errorEl) {
+          errorEl.textContent = "Each image must be 2 MB or smaller.";
+          errorEl.classList.remove("hidden");
+        }
+        if (input) input.value = "";
+        return;
       }
-      imageInput.value = "";
-      return;
-    }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      if (errorEl) {
-        errorEl.textContent = "Use a JPEG, PNG, or WebP image.";
-        errorEl.classList.remove("hidden");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        if (errorEl) {
+          errorEl.textContent = "Use JPEG, PNG, or WebP images.";
+          errorEl.classList.remove("hidden");
+        }
+        if (input) input.value = "";
+        return;
       }
-      imageInput.value = "";
-      return;
-    }
-    errorEl?.classList.add("hidden");
-    imageFile = file;
-    imagePreviewUrl = URL.createObjectURL(file);
-    if (imagePreview) {
-      imagePreview.src = imagePreviewUrl;
-      imagePreview.classList.remove("hidden");
-    }
-  });
+      errorEl?.classList.add("hidden");
+      imageFiles[slot] = file;
+      imagePreviewUrls[slot] = URL.createObjectURL(file);
+      const preview = imagePreviews[slot];
+      if (preview) {
+        preview.src = imagePreviewUrls[slot]!;
+        preview.classList.remove("hidden");
+      }
+    });
+  }
 
   function parsePrice(value: string): number | null {
     const normalized = value.replace(/,/g, "").trim();
@@ -282,6 +335,8 @@ export function setupListingWizard(apiBase = API_BASE): void {
         return "Delivery override must be zero or greater";
       }
     }
+    const copyErr = validateProductCopy(d);
+    if (copyErr) return copyErr;
     return null;
   }
 
@@ -299,15 +354,22 @@ export function setupListingWizard(apiBase = API_BASE): void {
 
     updateSkuPreview();
     updateSplitPreview();
+    updateCopyWordCount();
 
     if (step === totalSteps && reviewEl) {
       const d = readDraft();
       const price = parsePrice(d.unitPrice) ?? 0;
       const skuExample = previewSku(d.name, d.skuPrefix);
       const preview = computePreview();
-      const photoNote = imageFile
-        ? `<div><dt class="text-neutral-500 inline">Photo:</dt> <dd class="inline">${imageFile.name}</dd></div>`
-        : `<div><dt class="text-neutral-500 inline">Photo:</dt> <dd class="inline text-neutral-500">None (category icon will show)</dd></div>`;
+      const photoCount = imageFiles.filter(Boolean).length;
+      const photoNote =
+        photoCount > 0
+          ? `<div><dt class="text-neutral-500 inline">Photos:</dt> <dd class="inline">${photoCount} selected</dd></div>`
+          : `<div><dt class="text-neutral-500 inline">Photos:</dt> <dd class="inline text-neutral-500">None (category icon will show)</dd></div>`;
+      const copyNote =
+        d.shortDescription || d.highlights || d.features
+          ? `<div><dt class="text-neutral-500 inline">Product copy:</dt> <dd class="inline">${totalProductCopyWords(d)} words</dd></div>`
+          : "";
       const splitBlock = preview
         ? `<div class="mt-4 pt-4 border-t border-neutral-200">
             <p class="text-body-sm font-semibold m-0 mb-2">Revenue split (per unit)</p>
@@ -326,6 +388,7 @@ export function setupListingWizard(apiBase = API_BASE): void {
           <div><dt class="text-neutral-500 inline">Name:</dt> <dd class="inline">${d.name}</dd></div>
           <div><dt class="text-neutral-500 inline">Category:</dt> <dd class="inline">${d.category}</dd></div>
           ${photoNote}
+          ${copyNote}
         </dl>
         ${splitBlock}
         <p class="text-caption text-neutral-500 mt-4 m-0">Submitted listings are reviewed by coop officers before appearing in the marketplace.</p>`;
@@ -336,7 +399,7 @@ export function setupListingWizard(apiBase = API_BASE): void {
     try {
       const [settingsRes, profileRes] = await Promise.all([
         fetch(`${apiBase}/settings/commerce`),
-        fetch(`${apiBase}/merchant/profile`, { headers: merchantHeaders() }),
+        fetch(`${apiBase}/merchant/profile`, { headers: await merchantHeaders() }),
       ]);
       const settingsData = await settingsRes.json();
       const profileData = await profileRes.json();
@@ -412,10 +475,10 @@ export function setupListingWizard(apiBase = API_BASE): void {
       return;
     }
 
-    const vendorCode = getMerchantVendorCode();
-    if (!vendorCode) {
+    const canSubmit = await hasMerchantAccess(apiBase);
+    if (!canSubmit) {
       if (errorEl) {
-        errorEl.textContent = "Set your vendor code on the Apply page or dashboard first.";
+        errorEl.textContent = "Sign in with your member account on Your profile to submit listings.";
         errorEl.classList.remove("hidden");
       }
       return;
@@ -439,10 +502,13 @@ export function setupListingWizard(apiBase = API_BASE): void {
         payload.listingFeePercent = Number(d.listingFeePercent).toFixed(2);
       }
       if (d.deliveryPerItem) payload.deliveryPerItem = Number(d.deliveryPerItem).toFixed(2);
+      if (d.shortDescription) payload.shortDescription = d.shortDescription;
+      if (d.highlights) payload.highlights = d.highlights;
+      if (d.features) payload.features = d.features;
 
       const res = await fetch(`${apiBase}/merchant/listings`, {
         method: "POST",
-        headers: merchantHeaders(),
+        headers: await merchantHeaders(),
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -451,26 +517,34 @@ export function setupListingWizard(apiBase = API_BASE): void {
       const assignedSku = typeof data.listing?.sku === "string" ? data.listing.sku : previewSku(d.name, d.skuPrefix);
 
       let imageWarning = "";
-      if (imageFile) {
+      const uploadErrors: string[] = [];
+      for (const slot of IMAGE_SLOTS) {
+        const file = imageFiles[slot];
+        if (!file) continue;
         const form = new FormData();
-        form.append("image", imageFile);
+        form.append("image", file);
         const uploadRes = await fetch(
-          `${apiBase}/merchant/listings/${encodeURIComponent(assignedSku)}/image`,
+          `${apiBase}/merchant/listings/${encodeURIComponent(assignedSku)}/image?slot=${slot}`,
           {
             method: "POST",
-            headers: merchantAuthHeaders(),
+            headers: await merchantAuthHeaders(),
             body: form,
           },
         );
         const uploadData = await uploadRes.json().catch(() => ({}));
         if (!uploadRes.ok) {
-          imageWarning = ` Listing saved, but photo upload failed: ${uploadData.error ?? "upload error"}.`;
+          uploadErrors.push(`photo ${slot + 1}: ${uploadData.error ?? "upload error"}`);
         }
+      }
+      if (uploadErrors.length) {
+        imageWarning = ` Listing saved, but some photos failed: ${uploadErrors.join("; ")}.`;
       }
 
       sessionStorage.removeItem(DRAFT_KEY);
-      clearImagePreview();
-      if (imageInput) imageInput.value = "";
+      clearAllImagePreviews();
+      for (const input of imageInputs) {
+        if (input) input.value = "";
+      }
 
       if (successEl) {
         successEl.innerHTML = `Listing submitted for review (<code>${assignedSku}</code>).${imageWarning} <a href="/sell/listings" class="text-brand-600 font-semibold">View your listings →</a>`;
@@ -491,5 +565,11 @@ export function setupListingWizard(apiBase = API_BASE): void {
   });
 
   void loadContext();
+  subscribeMemberAuth(() => {
+    void loadContext();
+  });
+  window.addEventListener("merchant-access-ready", () => {
+    void loadContext();
+  });
   updateUi();
 }
