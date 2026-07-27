@@ -46,6 +46,8 @@ export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export const catalogItemPublicSchema = z.object({
   vendorCode: z.string(),
   vendorSlug: z.string().optional(),
+  /** Approved storefront business name for "Sold by" and search. */
+  vendorName: z.string().optional(),
   sku: z.string(),
   name: z.string(),
   category: z.string(),

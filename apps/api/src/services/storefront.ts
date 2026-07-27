@@ -32,6 +32,7 @@ export async function getStorefrontBySlug(db: StoreDatabase, slug: string, env: 
     .select({
       vendorCode: vendors.code,
       vendorSlug: vendors.slug,
+      vendorName: vendors.name,
       sku: products.sku,
       name: products.name,
       category: products.category,

@@ -85,7 +85,12 @@ const galleryUrls =
                 </p>
               </Card>
 
-              <SellerMiniCard vendorCode={product.vendorCode} vendorSlug={product.vendorSlug} class="mb-6" />
+              <SellerMiniCard
+                vendorCode={product.vendorCode}
+                vendorSlug={product.vendorSlug}
+                vendorName={product.vendorName}
+                class="mb-6"
+              />
 
               <ProductDetailCopy
                 shortDescription={product.shortDescription}

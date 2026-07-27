@@ -5,6 +5,7 @@ import { galleryFromRow } from "../services/product-image";
 type CatalogProductRow = {
   vendorCode: string;
   vendorSlug: string;
+  vendorName: string;
   sku: string;
   name: string;
   category: string;
@@ -27,6 +28,7 @@ export function serializeCatalogItem(env: WorkerEnv, row: CatalogProductRow) {
   return {
     vendorCode: row.vendorCode,
     vendorSlug: row.vendorSlug,
+    vendorName: row.vendorName,
     sku: row.sku,
     name: row.name,
     category: row.category,

@@ -8,7 +8,9 @@ export function filterCatalog(items: CatalogItemPublic[], query: string): Catalo
   const q = normalizeQuery(query);
   if (!q) return items;
   return items.filter((item) => {
-    const haystack = [item.name, item.sku, item.category, item.vendorCode].join(" ").toLowerCase();
+    const haystack = [item.name, item.sku, item.category, item.vendorCode, item.vendorName ?? ""]
+      .join(" ")
+      .toLowerCase();
     return haystack.includes(q);
   });
 }
