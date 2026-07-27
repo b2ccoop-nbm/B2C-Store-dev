@@ -4,6 +4,7 @@ import {
   effectiveDeliveryPerItem,
   listingSkuBaseFromName,
   normalizeListingSkuBase,
+  DEFAULT_LISTING_CATEGORY,
   type DeliveryTier,
   type PlatformCommerceSettings,
   type SellerKind,
@@ -48,7 +49,7 @@ function loadDraft(): Draft {
       return {
         skuPrefix: parsed.skuPrefix ?? parsed.sku ?? "",
         name: parsed.name ?? "",
-        category: parsed.category ?? "Groceries",
+        category: parsed.category ?? DEFAULT_LISTING_CATEGORY,
         unitPrice: parsed.unitPrice ?? "",
         listingFeePercent: parsed.listingFeePercent ?? "",
         deliveryTier: parsed.deliveryTier ?? "standard",
@@ -65,7 +66,7 @@ function loadDraft(): Draft {
   return {
     skuPrefix: "",
     name: "",
-    category: "Groceries",
+    category: DEFAULT_LISTING_CATEGORY,
     unitPrice: "",
     listingFeePercent: "",
     deliveryTier: "standard",

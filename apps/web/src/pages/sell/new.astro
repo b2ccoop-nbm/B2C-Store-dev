@@ -5,16 +5,9 @@ import Card from "@/components/atoms/Card.astro";
 import Input from "@/components/atoms/Input.astro";
 import Select from "@/components/atoms/Select.astro";
 import Textarea from "@/components/atoms/Textarea.astro";
+import { LISTING_CATEGORIES } from "@b2ccoop/store-shared";
 
-const categories = [
-  "Groceries",
-  "Produce",
-  "Dairy",
-  "Bakery",
-  "Household",
-  "Health",
-  "General",
-];
+const categories = [...LISTING_CATEGORIES];
 ---
 
 <DashboardLayout title="New listing" section="sell">

@@ -1,4 +1,4 @@
-import { stripListingSkuTimestamp } from "@b2ccoop/store-shared";
+import { stripListingSkuTimestamp, LISTING_CATEGORIES } from "@b2ccoop/store-shared";
 import { API_BASE } from "@/lib/api";
 import { merchantAuthHeaders, merchantHeaders } from "@/lib/merchant-session";
 import {
@@ -9,7 +9,7 @@ import {
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const CATEGORIES = ["Groceries", "Produce", "Dairy", "Bakery", "Household", "Health", "General"];
+const CATEGORIES = [...LISTING_CATEGORIES];
 const IMAGE_SLOTS = [0, 1, 2, 3] as const;
 
 type MerchantListingRow = {
