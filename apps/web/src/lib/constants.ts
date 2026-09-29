@@ -19,7 +19,8 @@ export const STORAGE_KEYS = {
 
 export const TRUST_COPY = {
   coopName: "B2C Consumers Cooperative",
-  helpPhone: "+63 32 000 0000",
+  /** Empty until a real coop help number is provided. Do not invent a placeholder. */
+  helpPhone: "",
   pickupLocation: "Coop store counter — main branch",
   registration: "CDA-registered consumers cooperative",
 } as const;
