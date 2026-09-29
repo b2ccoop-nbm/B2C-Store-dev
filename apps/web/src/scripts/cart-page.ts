@@ -143,8 +143,15 @@ export function setupCartPage(apiBase: string, turnstileSiteKey: string): void {
 
   function bindPaymentOptions(): void {
     if (!paymentEl) return;
-    paymentEl.classList.toggle("hidden", !onlinePaymentEnabled);
+    const onlineOption = document.getElementById("payment-option-online");
+    onlineOption?.classList.toggle("hidden", !onlinePaymentEnabled);
+    if (!onlinePaymentEnabled && paymentMethod === "online") {
+      paymentMethod = "pickup";
+    }
     paymentEl.querySelectorAll<HTMLInputElement>('input[name="paymentMethod"]').forEach((input) => {
+      if (input.value === "online") {
+        input.disabled = !onlinePaymentEnabled;
+      }
       input.checked = input.value === paymentMethod;
     });
   }

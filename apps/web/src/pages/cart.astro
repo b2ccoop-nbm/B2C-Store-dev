@@ -9,7 +9,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 <MarketplaceLayout title="Cart">
   <header class="mb-6">
     <h1 class="text-display m-0">Your cart</h1>
-    <p class="text-body-sm text-neutral-500 mt-1 m-0">One seller per order. Choose delivery or pickup, then pay on delivery or online via GCash, Maya, or QR Ph.</p>
+    <p class="text-body-sm text-neutral-500 mt-1 m-0">One seller per order. Choose delivery or pickup, then pay when you pick up or on delivery.</p>
   </header>
 
   <div id="cart-root" aria-live="polite">
@@ -34,16 +34,18 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
       <div id="pickup-summary" class="hidden rounded-xl border border-merchant-200 bg-merchant-50 p-4 text-body-sm" />
 
-      <fieldset id="payment-options" class="hidden border border-neutral-200 rounded-xl p-4 m-0 space-y-3">
+      <fieldset id="payment-options" class="border border-neutral-200 rounded-xl p-4 m-0 space-y-3">
         <legend class="text-body-sm font-semibold px-1">How would you like to pay?</legend>
         <label class="flex items-start gap-3 text-body-sm cursor-pointer">
           <input type="radio" name="paymentMethod" value="pickup" checked class="mt-1" />
           <span><strong>Pay on delivery / pickup</strong> — cash or e-wallet when you receive the order</span>
         </label>
-        <label class="flex items-start gap-3 text-body-sm cursor-pointer">
-          <input type="radio" name="paymentMethod" value="online" class="mt-1" />
-          <span><strong>Pay online now</strong> — GCash, Maya, or QR Ph on PayMongo</span>
-        </label>
+        <div id="payment-option-online" class="hidden">
+          <label class="flex items-start gap-3 text-body-sm cursor-pointer">
+            <input type="radio" name="paymentMethod" value="online" class="mt-1" />
+            <span><strong>Pay online (optional)</strong> — GCash, Maya, or QR Ph on PayMongo when available</span>
+          </label>
+        </div>
       </fieldset>
       <p
         id="online-payment-hint"
